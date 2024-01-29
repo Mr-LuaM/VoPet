@@ -5,6 +5,7 @@ import vuetify from './plugins/vuetify'
 import { loadFonts } from './plugins/webfontloader'
 import { createPinia } from 'pinia';
 import axios from 'axios'
+import './registerServiceWorker'
 
 axios.defaults.baseURL = "backend.test/"
 
