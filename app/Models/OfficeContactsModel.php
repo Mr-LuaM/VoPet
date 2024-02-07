@@ -4,15 +4,15 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class UserModel extends Model
+class OfficeContactsModel extends Model
 {
-    protected $table            = 'users';
-    protected $primaryKey       = 'user_id';
+    protected $table            = 'office_contacts';
+    protected $primaryKey       = 'contact_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['password', 'email', 'role', 'fname', 'lname', 'birthdate', 'sex', 'contact_number', 'address','created_at', 'updated_at','verification_token', 'token_expires_at', 'email_confirmed', 'verification_attempts', 'last_attempt_time','failed_login_attempts', 'lock_until', 'password_reset_token', 'password_reset_expires_at', 'status', 'last_login_at', 'last_login_ip','picture_url'];
+    protected $allowedFields    = ['type', 'value', 'description', 'created_at', 'updated_at'];
 
     protected bool $allowEmptyInserts = false;
 

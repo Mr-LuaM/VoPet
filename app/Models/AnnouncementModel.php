@@ -12,7 +12,7 @@ class AnnouncementModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['title', 'content', 'created_at', 'updated_at'];
+    protected $allowedFields    = ['title', 'content', 'created_at', 'updated_at', 'user_id'];
 
     protected bool $allowEmptyInserts = false;
 

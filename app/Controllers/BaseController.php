@@ -9,9 +9,6 @@ use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
-use CodeIgniter\RESTful\ResourceController;
-use CodeIgniter\HTTP\Request;
-use CodeIgniter\API\ResponseTrait;
 
 /**
  * Class BaseController
@@ -25,7 +22,6 @@ use CodeIgniter\API\ResponseTrait;
  */
 abstract class BaseController extends Controller
 {
-    use ResponseTrait;
     /**
      * Instance of the main Request object.
      *

@@ -63,13 +63,19 @@ if (! defined('ENVIRONMENT')) {
  * the pieces all working together.
  */
 
- header('Access-Control-Allow-Origin: *');
- header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
- header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
- $method = $_SERVER['REQUEST_METHOD'];
- if($method == "OPTIONS") {
-     die();
- }
+// CORS configuration
+header('Access-Control-Allow-Origin: *'); // Consider replacing '*' with specific domains for production
+header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization"); // Added 'Authorization' if you're using tokens
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+
+// Handle preflight requests
+$method = $_SERVER['REQUEST_METHOD'];
+if ($method == "OPTIONS") {
+    // Return OK status for OPTIONS requests
+    header("HTTP/1.1 200 OK");
+    exit();
+}
+
 
 $app = Config\Services::codeigniter();
 $app->initialize();
