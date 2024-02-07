@@ -16,7 +16,7 @@
                 <v-img
                 :width="200"
                 aspect-ratio="1/1"
-                src="../assets/images/pic4.png"
+                src="@/assets/images/pic4.png"
                 class=" mx-auto"
               ></v-img>
               <v-card-text>
@@ -27,7 +27,7 @@
 
                 <br>
                 <br>
-                <v-form validate-on="blur" > 
+                <v-form validate-on="blur" ref="form"  @submit.prevent="signup"> 
                   <v-row>
                     <v-col cols="6" >
                       <v-text-field
@@ -69,11 +69,11 @@
    <v-text-field
    v-model="confirmPassword"
    label="Confrim Password"
-:append-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
-:type="visible ? 'text' : 'password'"
+:append-icon="visible2 ? 'mdi-eye-off' : 'mdi-eye'"
+:type="visible2 ? 'text' : 'password'"
 
 variant="underlined"
-@click:append="visible = !visible"
+@click:append="visible2 = !visible2"
 :rules="confirmPasswordRules" 
 ></v-text-field>
 <v-row>
@@ -105,23 +105,25 @@ variant="underlined"
                   
     <v-btn
     block
-    class="mb-8"
+    class="mb-8 mt-2"
     color="secondary"
     size="large"
+    @click="signup"
+    :loading="loading"
    
   >
     Sign Up
   </v-btn>
 
   <v-card-text class="text-center">
-    <a
+    <router-link
       class="text-primary text-decoration-none text-caption"
-      href="login"
+      to="/login"
       rel="noopener noreferrer"
   
     >
       Login <v-icon icon="mdi-chevron-right"></v-icon>
-    </a>
+    </router-link>
   </v-card-text>
                   </v-form>
               </v-card-text>
@@ -131,7 +133,13 @@ variant="underlined"
   
       </v-col>
     </v-row>
+
+
+    <DynamicSnackbar ref="snackbar" />
   </v-container>
+
+
+  
 
   
   </template>
@@ -145,7 +153,15 @@ variant="underlined"
   contactNumberRule,
   confirmPasswordRule
    } from '@/composables/validationRules'; // Directly import the rule
-  
+   import axios from 'axios';
+   import { useRouter } from 'vue-router';
+
+   import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
+
+   const form = ref(null);
+   const snackbar = ref(null);
+   const loading = ref(false)
+
   const fname = ref('');
 const lname = ref('');
 const email = ref('');
@@ -155,8 +171,53 @@ const birthdate = ref('');
 const sex = ref('');
 const contactNumber = ref('');
 const visible = ref(false);
+const visible2 = ref(false);
 
 const confirmPasswordRules = confirmPasswordRule(password);
+const router = useRouter();
+
+// Function to submit form data
+const signup = async () => {
+
+  const { valid } = await form.value.validate();
+  if (valid) {
+  try {
+    const formData = {
+      fname: fname.value,
+      lname: lname.value,
+      email: email.value,
+      password: password.value, // Ensure you handle passwords securely!
+      birthdate: birthdate.value,
+      sex: sex.value,
+      contact_number: contactNumber.value,
+    };
+    loading.value =true;
+    // Replace 'your_api_endpoint' with the actual endpoint URL
+    const response = await axios.post('auth/signup', formData);
+    
+    //console.log(response.data);
+    if (response.status === 201) {
+      const userEmail = response.data.data.email; // Extract email from response
+    router.push({ 
+        name: 'verification', 
+        params: { email: (userEmail) } 
+    });
+    console.log(userEmail);
+      }
+  } catch (error) {
+    let errorMessage = 'An unknown error occurred. Please try again.';
+    if (error.response && error.response.data && error.response.data.messages) {
+      // Joining all error messages into a single string, separated by spaces.
+      errorMessage = Object.values(error.response.data.messages).join(' ');
+    }
+    // Use the snackbar to display the error
+    if (snackbar.value) {
+      snackbar.value.openSnackbar(errorMessage, 'error');
+    }
+    loading.value =false;
+  }
+}
+};
 
   </script>
   

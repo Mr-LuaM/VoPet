@@ -12,7 +12,7 @@ const light = {
   dark: false,
   colors: {
     background: '#FFFFFF',
-    surface: '#FAFAFA',
+    surface: '#FFFFFF',//FAFAFA
     'surface-bright': '#FFFFFF',
     'surface-light': '#F5F5F5',
     'surface-variant': '#E0E0E0',

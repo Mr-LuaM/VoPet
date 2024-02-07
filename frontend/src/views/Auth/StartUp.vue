@@ -19,7 +19,7 @@
                     <v-img
                     :width="200"
                     aspect-ratio="1/1"
-                    src="../assets/images/pic2.png"
+                    src="@/assets/images/pic2.png"
                     class=" mx-auto"
                   ></v-img>
                     </div>
@@ -42,7 +42,7 @@
                         <v-img
                         :width="200"
                         aspect-ratio="1/1"
-                        src="../assets/images/pic3.png"
+                        src="@/assets/images/pic3.png"
                         class=" mx-auto"
                       ></v-img>
                         </div>
@@ -62,7 +62,7 @@ The Veterinary Office Pet Adoption System with GIS Technology is a dynamic web a
                         <v-img
                         :width="200"
                         aspect-ratio="1/1"
-                        src="../assets/images/pic4.png"
+                        src="@/assets/images/pic4.png"
                         class=" mx-auto"
                       ></v-img>
                         </div>

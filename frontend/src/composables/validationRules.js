@@ -45,3 +45,13 @@ export const contactNumberRule = [
   v => !!v || 'Contact number is required',
   v => /^\d{10,}$/.test(v) || 'Contact number must be at least 10 digits',
 ];
+
+export const profileRule = [
+  (file) => !!file || 'Cannot be blank',
+    // (file) => !file || file.size < 2000000 || 'Profile picture size should be less than 2MB',
+    // (file) => {
+    //   if (!file) return true;
+    //   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    //   return allowedTypes.includes(file.type) || 'Allowed formats are JPEG, PNG, GIF';
+    // },
+  ];
