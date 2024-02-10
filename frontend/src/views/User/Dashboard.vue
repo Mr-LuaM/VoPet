@@ -13,8 +13,8 @@
             <v-toolbar-title class="font-weight-black  text-primary text-h6">Vopet</v-toolbar-title>
             <v-spacer></v-spacer>
            
-            <v-btn variant="flat" color="secondary"  size="x-small">
-                Help
+            <v-btn variant="flat" color="secondary"  size="x-small" @click="userStore.logout">
+               Logout 
             </v-btn></v-toolbar>
             <v-col
             cols="12"
@@ -130,7 +130,10 @@ const recentPets = ref([]);
 
 const fetchPetCounts = async () => {
   try {
-    const response = await axios.get('/user/petCounts'); // Replace with your API endpoint
+    const response = await axios.get('/user/petCounts', {
+      headers: { Authorization: `Bearer ${userStore.token}` }
+    }); // Replace with your API endpoint
+
     const { available, processing, adopted } = response.data;
 
     petCounts.value.available = available;
@@ -140,6 +143,7 @@ const fetchPetCounts = async () => {
     console.error('Error fetching pet counts:', error);
   }
 };
+
 const fetchRecentPets = async () => {
   try {
     const response = await axios.get('user/recent-pets'); // Replace with your API endpoint

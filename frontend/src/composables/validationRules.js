@@ -55,3 +55,8 @@ export const profileRule = [
     //   return allowedTypes.includes(file.type) || 'Allowed formats are JPEG, PNG, GIF';
     // },
   ];
+  // Zip Code validation rule
+export const zipCodeRule = [
+  v => !!v || 'Zip code is required',
+  v => /^\d{4}$/.test(v) || 'Zip code must be 4 digits',
+];

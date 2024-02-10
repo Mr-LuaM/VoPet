@@ -54,7 +54,42 @@ const adminRoutes = [
       path: 'dashboard',
       name: 'adminDashboard',
       component: () => import('../views/Admin/Dashboard.vue'),
-    }
+    },
+    {
+      path: 'petManagement',
+      name: 'petManagement',
+      component: () => import('../views/Admin/PetManagement.vue'),
+    },
+    {
+      path: 'accountManagement',
+      name: 'accountManagement',
+      component: () => import('../views/Admin/AccountManagement.vue'),
+    },
+    {
+      path: 'transaction',
+      name: 'transaction',
+      component: () => import('../views/Admin/Transaction.vue'),
+    },
+    {
+      path: 'history',
+      name: 'history',
+      component: () => import('../views/Admin/History.vue'),
+    },
+    {
+      path: 'message',
+      name: 'message',
+      component: () => import('../views/Admin/Message.vue'),
+    },
+    {
+      path: 'announcements',
+      name: 'announcements',
+      component: () => import('../views/Admin/Announcement.vue'),
+    },
+    {
+      path: 'profile',
+      name: 'profile',
+      component: () => import('../views/Admin/Profile.vue'),
+    },
     ]
   },
 

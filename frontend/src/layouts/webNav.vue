@@ -8,54 +8,169 @@
       </v-app-bar>
   
       <!-- Navigation Drawer -->
-      <v-navigation-drawer app v-model="sidebarOpen" class="elevation-12 rounded-e">
-        <v-img width="300" :aspect-ratio="1" src="@/assets/images/pic6.png" cover class="pa-10"></v-img>
-        <v-list density="comfortable" nav>
-          <v-list-item>
-            <v-list-item-title>Dashboard</v-list-item-title>
-          </v-list-item>
-          <!-- Additional items -->
-        </v-list>
+      <v-navigation-drawer app v-model="sidebarOpen" class=" rounded-e bg-primary-darken-1">
+        <div class="text-center ">
+        <v-img width="150" :aspect-ratio="1" src="@/assets/images/pic2.png" cover class="pa-12 ma-3 mx-auto "></v-img>
+      </div>  <div class="text-center font-weight-black text-h6  ">Vopet</div>
+
+    <v-list density="comfortable" nav>
+  <v-list-item
+    link
+    to="/admin/dashboard"
+    prepend-icon="mdi-view-dashboard"
+  >
+    <v-list-item-title>Dashboard</v-list-item-title>
+  </v-list-item>
+
+  <!-- Divider -->
+  <v-container>
+    <v-divider></v-divider>
+  </v-container>
+
+  <!-- Pet Management -->
+  <v-list-item
+    link
+    to="/admin/petManagement"
+    prepend-icon="mdi-dog"
+  >
+    <v-list-item-title>Pet Management</v-list-item-title>
+  </v-list-item>
+
+  <!-- Account Management -->
+  <v-list-item
+    link
+    to="/admin/accountManagement"
+    prepend-icon="mdi-account-group"
+  >
+    <v-list-item-title>Account Management</v-list-item-title>
+  </v-list-item>
+
+  <!-- Divider -->
+  <v-container>
+    <v-divider></v-divider>
+  </v-container>
+
+  <!-- Transaction -->
+  <v-list-item
+    link
+    to="/admin/transaction"
+    prepend-icon="mdi-book-open-page-variant"
+  >
+    <v-list-item-title>Transaction</v-list-item-title>
+  </v-list-item>
+
+  <!-- History -->
+  <v-list-item
+    link
+    to="/admin/history"
+    prepend-icon="mdi-history"
+  >
+    <v-list-item-title>History</v-list-item-title>
+  </v-list-item>
+
+  <!-- Divider -->
+  <v-container>
+    <v-divider></v-divider>
+  </v-container>
+
+  <!-- Message -->
+  <v-list-item
+    link
+    to="/admin/message"
+    prepend-icon="mdi-message-reply-text-outline"
+  >
+    <v-list-item-title>Message</v-list-item-title>
+  </v-list-item>
+
+  <!-- Announcements -->
+  <v-list-item
+    link
+    to="/admin/announcements"
+    prepend-icon="mdi-post"
+  >
+    <v-list-item-title>Announcements</v-list-item-title>
+  </v-list-item>
+
+  <!-- Divider -->
+  <v-container>
+    <v-divider></v-divider>
+  </v-container>
+
+  <!-- Profile -->
+  <v-list-item
+    link
+    to="/admin/profile"
+    prepend-icon="mdi-account-edit"
+  >
+    <v-list-item-title>Profile</v-list-item-title>
+  </v-list-item>
+</v-list>
+
         <template v-slot:append>
           <div class="pa-2">
-            <v-btn @click="logout" block>Logout</v-btn>
+            <v-btn @click="logout" block variant="flat" class="bg-info">Settings</v-btn>
+          </div>
+          <div class="pa-2">
+            <v-btn @click="userStore.logout" block variant="flat"  class="bg-error">Logout</v-btn>
           </div>
         </template>
       </v-navigation-drawer>
   
       <!-- Main Content -->
       <v-main>
-        <router-view></router-view>
+        
+      
+          <div class="pa-2">
+        <v-breadcrumbs :items="breadcrumbs">
+          <template v-slot:prepend>
+            <v-icon size="small">mdi-home</v-icon>
+          </template>
+        </v-breadcrumbs>
+        </div>
+        <router-view>
+        </router-view>
       </v-main>
     </v-app>
   </template>
   <script setup>
-import { ref, onMounted, onUnmounted, watchEffect } from 'vue';
+  import { ref, watch, onUnmounted } from 'vue';
+  import { useRoute, useRouter } from 'vue-router';
+  import { useUserStore } from '@/stores/userStore';
   
-  const sidebarOpen = ref(false);
+  const router = useRouter();
+  const route = useRoute();
+  const userStore = useUserStore();
+  const sidebarOpen = ref(window.innerWidth > 768); // Initialize directly without needing onMounted
+  const breadcrumbs = ref([]);
   
-  onMounted(() => {
-    // Set the initial state of the sidebar based on the window width
-    sidebarOpen.value = window.innerWidth > 768; // Use 768px as the breakpoint between mobile and desktop
-    // You can adjust this value based on your design's breakpoint
-  
-    // Optional: Resize listener to set initial state if you want to handle dynamic resizing
-    // This part is optional and can be omitted if you only care about the initial state at page load
-    const handleResize = () => {
-      sidebarOpen.value = window.innerWidth > 768;
-    };
-  
-    window.addEventListener('resize', handleResize);
-  
-    // Cleanup to remove event listener when component unmounts
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize);
+  // Function to update breadcrumbs based on current route
+  const updateBreadcrumbs = () => {
+    const routeSegments = route.path.split('/').filter(segment => segment !== '');
+    breadcrumbs.value = routeSegments.map(segment => {
+      // Optionally, you can add more logic here to customize breadcrumb names
+      // For example, using route names or meta fields
+      return segment.charAt(0).toUpperCase() + segment.slice(1);
     });
+  };
+  
+  // Watch for route changes and update breadcrumbs
+  watch(route, () => {
+    updateBreadcrumbs();
+  }, { immediate: true });
+  
+  // Handle sidebar state based on window resize
+  const handleResize = () => {
+    sidebarOpen.value = window.innerWidth > 768;
+  };
+  window.addEventListener('resize', handleResize);
+  
+  // Cleanup to remove event listener when component unmounts
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
   });
   
   const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value;
   };
   </script>
-  
   
