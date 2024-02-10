@@ -174,57 +174,63 @@ class AuthController extends ResourceController
         echo 'hi';
     }
     public function login()
-    {
-        $json = $this->request->getJSON(true);
-        $email = $json['email'] ?? '';
-        $password = $json['password'] ?? '';
-    
-        $user = $this->users->where('email', $email)->first();
-    
-        // Check if user exists
-        if (!$user) {
-            return $this->failNotFound('User not found');
-        }
-    
-        // Check if account is locked
-        if (!empty($user['lock_until']) && new \DateTime() < new \DateTime($user['lock_until'])) {
-            return $this->fail('Account is temporarily locked. Please try again later.', 403); // Or another appropriate status code
-        }
-    
-        if (password_verify($password, $user['password'])) {
-            // Reset failed attempts on successful login
-            $this->users->update($user['user_id'], ['failed_login_attempts' => 0, 'lock_until' => null]);
-        } else {
-            // Handle failed login attempt
-            $failedAttempts = $user['failed_login_attempts'] + 1;
-            $lockUntil = null;
-    
-            if ($failedAttempts >= 7) {
-                // Lock account for 3 hours
-                $lockUntil = date('Y-m-d H:i:s', strtotime('+3 hours'));
-                $failedAttempts = 0; // Consider whether to reset attempts here
-            }
-    
-            $this->users->update($user['user_id'], [
-                'failed_login_attempts' => $failedAttempts,
-                'lock_until' => $lockUntil
-            ]);
-    
-            return $this->failUnauthorized('Invalid email or password');
-        }
-      
-        // JWT generation
-        $key = getenv('JWT_SECRET');
-        $payload = [
-            'iat' => time(),
-            'exp' => time() + 3600,
-            'sub' => $user['user_id'],
-        ];
-    
-        $jwt = JWT::encode($payload, $key, 'HS256');
-    
-        return $this->respond(['token' => $jwt, 'message' => 'Login successful'], 200);
+{
+    $json = $this->request->getJSON(true);
+    $email = $json['email'] ?? '';
+    $password = $json['password'] ?? '';
+
+    $user = $this->users->where('email', $email)->first();
+
+    // Check if user exists
+    if (!$user) {
+        return $this->failNotFound('User not found');
     }
+
+    // Check if account is suspended
+    if (isset($user['status']) && $user['status'] === 'suspended') {
+        return $this->fail('This account has been suspended.', 403); // Or another appropriate status code
+    }
+
+    // Check if account is locked
+    if (!empty($user['lock_until']) && new \DateTime() < new \DateTime($user['lock_until'])) {
+        return $this->fail('Account is temporarily locked. Please try again later.', 403); // Or another appropriate status code
+    }
+
+    if (password_verify($password, $user['password'])) {
+        // Reset failed attempts on successful login
+        $this->users->update($user['user_id'], ['failed_login_attempts' => 0, 'lock_until' => null]);
+    } else {
+        // Handle failed login attempt
+        $failedAttempts = $user['failed_login_attempts'] + 1;
+        $lockUntil = null;
+
+        if ($failedAttempts >= 7) {
+            // Lock account for 3 hours
+            $lockUntil = date('Y-m-d H:i:s', strtotime('+3 hours'));
+            $failedAttempts = 0; // Consider whether to reset attempts here
+        }
+
+        $this->users->update($user['user_id'], [
+            'failed_login_attempts' => $failedAttempts,
+            'lock_until' => $lockUntil
+        ]);
+
+        return $this->failUnauthorized('Invalid email or password');
+    }
+  
+    // JWT generation
+    $key = getenv('JWT_SECRET');
+    $payload = [
+        'iat' => time(),
+        'exp' => time() + 3600,
+        'sub' => $user['user_id'],
+    ];
+
+    $jwt = JWT::encode($payload, $key, 'HS256');
+
+    return $this->respond(['token' => $jwt, 'message' => 'Login successful'], 200);
+}
+
 
     public function forgotPassword()
     {
