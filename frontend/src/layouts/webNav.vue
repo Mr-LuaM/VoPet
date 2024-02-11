@@ -1,6 +1,5 @@
 <template>
-    <v-app>
-      <!-- App Bar -->
+  <v-app class="app-container">      <!-- App Bar -->
       <v-app-bar app color="primary" class="rounded-b-m">
         <v-app-bar-nav-icon @click="toggleSidebar"></v-app-bar-nav-icon>
         <v-toolbar-title class="ml-2">Admin</v-toolbar-title>
@@ -117,7 +116,7 @@
       </v-navigation-drawer>
   
       <!-- Main Content -->
-      <v-main>
+      <v-main  class="main-content" >
         
       
           <div class="pa-2">
@@ -173,4 +172,18 @@
     sidebarOpen.value = !sidebarOpen.value;
   };
   </script>
+  <style>
+  /* Ensure the app container fits the entire viewport */
+  .app-container {
+    height: 100vh;
+    overflow: hidden; /* Prevent the app container from scrolling */
+  }
+  
+  /* Main content area styling */
+  .main-content {
+    height: calc(100vh - 48px); /* Adjust based on app bar height */
+    overflow-y: auto; /* Allow the main content area to scroll */
+  }
+  </style>
+  
   

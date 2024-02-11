@@ -10,6 +10,7 @@
     "@mdi/font": "5.9.55",
     "axios": "^1.6.7",
     "core-js": "^3.8.3",
+    "heatmap.js": "^2.0.5",
     "jwt-decode": "^4.0.0",
     "leaflet": "^1.9.4",
     "leaflet-routing-machine": "^3.2.12",

@@ -90,6 +90,26 @@ const adminRoutes = [
       name: 'profile',
       component: () => import('../views/Admin/Profile.vue'),
     },
+    {
+      path: 'edit/profile', // Path: /user/edit/profile
+      name: 'admin-edit-profile',
+      component: () => import('../views/Admin/EditProfile.vue'),
+    },
+    {
+      path: 'edit/contacts', // Path: /user/edit/contacts
+      name: 'admin-edit-contacts',
+      component: () => import('../views/Admin/EditContacts.vue'),
+    },
+    {
+      path: 'edit/address', // Path: /user/edit/address
+      name: 'admin-edit-address',
+      component: () => import('../views/Admin/EditAddress.vue'),
+    },
+    {
+      path: 'edit/security', // Path: /user/edit/security
+      name: 'admin-security',
+      component: () => import('../views/Admin/EditSecurity.vue'),
+    },
     ]
   },
 
@@ -195,7 +215,12 @@ const errorRoute = [
     path: '/:catchAll(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFound.vue'),
-  }
+  },
+  {
+    path: '/unauthorized',
+    name: 'Unauthorized',
+    component: () => import('../views/Unauthorized.vue'),
+  },
   
 ];
 
@@ -215,7 +240,7 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
    await userStore.logout();
   } else if (to.meta.requiresAuth && to.meta.role && to.meta.role !== userRole) {
-    next({ name: 'NotFound' }); 
+    next({ name: 'Unauthorized' }); 
   } else {
     next();
   }

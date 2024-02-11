@@ -60,7 +60,7 @@
         
                 <router-link
                 class="text-caption text-decoration-none text-primary mb-3"
-                to="/petGallery" 
+                to="petGallery" 
               >
                 View Pet Gallery<v-icon icon="mdi-chevron-right"></v-icon>
               </router-link>

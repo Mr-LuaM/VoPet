@@ -13,10 +13,12 @@
 
     aspect-ratio="16/9"
     cover
-    src="@/assets/404.png"
+    src="@/assets/401.png"
   ></v-img>
   </div>
-  <div class="text-center text-h4 font-weight-bold">Page not Found</div>
+  <div class="text-center text-caption font-weight-bold mt-n8 mb-8">Hey, you're not allowed here</div>
+
+  <div class="text-center text-h4 font-weight-bold">401: Unathorized</div>
   <v-card-text class="text-center">
     <router-link
       class="text-primary text-decoration-none text-caption"

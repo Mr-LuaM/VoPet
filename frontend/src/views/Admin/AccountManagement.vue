@@ -57,17 +57,17 @@
       <!-- Action Column -->
       <template v-slot:item.action="{ item }">
         <v-icon
-        size="small"
-        class="me-2"
-        @click="handleIconClick(item)"
-      >
-        {{ editItemId === item.user_id ? 'mdi-content-save' : 'mdi-pencil' }}
-      </v-icon>
+          size="small"
+          class="me-2"
+          @click="handleIconClick(item)"
+        >
+          {{ editItemId === item.user_id ? 'mdi-content-save' : 'mdi-pencil' }}
+        </v-icon>
         <v-icon
           size="small"
-          @click="removeAccount(item.user_id)"
+          @click="showRemoveConfirmationDialog(item.user_id)" 
         >
-        mdi-account-remove
+          mdi-account-remove
         </v-icon>
       </template>
       </v-data-table>
@@ -77,6 +77,7 @@
       width="auto"
       v-model="dialog"
      persistent
+     scrollable
       :location="right"
     >
       <template v-slot:default="{ isActive }">
@@ -212,8 +213,7 @@ variant="underlined"
         </v-card>
       </template>
     </v-dialog>
-
-    <DynamicSnackbar ref="snackbar" />
+    <ConfirmationDialog ref="confirmationDialog" :title="removeDialogTitle" :message="removeDialogMessage" :color="color" @confirm="handleRemoveConfirm" @cancel="handleCancel" />    <DynamicSnackbar ref="snackbar" />
     </v-card>
 
 
@@ -225,6 +225,8 @@ variant="underlined"
   import { useUserStore } from '@/stores/userStore'
   import { useImageUrl } from '@/composables/useImageUrl';
   import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
+  import ConfirmationDialog from '@/components/dialogs/confirmationDialog.vue';
+
 
   import {  emailRule,
   passwordRule,
@@ -389,7 +391,37 @@ const confirmPasswordRules = confirmPasswordRule(password);
   }
 };
 
+const confirmationDialog = ref(null);
+const currentUser = ref(null); // Assuming you have a ref for the current user
+    const removeDialogMessage = ref(''); // Ref for the remove dialog message
+    const removeDialogTitle = 'Remove User'; // Title for the remove dialog
+    const color = ref('warning'); // Color for the dialog
 
+ const showRemoveConfirmationDialog = (userId) => {
+      // Find the user with the provided userId
+      const user = items.value.find(u => u.user_id === userId); // Changed from users to items
+      if (user) {
+        currentUser.value = user;
+        removeDialogMessage.value = `Are you sure you want to remove ${user.name}?`;
+        confirmationDialog.value.openDialog();
+      }
+    };
+
+    const handleRemoveConfirm = async () => {
+      if (currentUser.value && currentUser.value.user_id) {
+        // Perform remove account action using currentUser.value.user_id
+        await removeAccount(currentUser.value.user_id);
+        confirmationDialog.value.closeDialog();
+        currentUser.value = null;
+      } else {
+        console.error('User ID is missing');
+      }
+    };
+
+    const handleCancel = () => {
+      // Reset currentUser if the user cancels
+      currentUser.value = null;
+    };
 const removeAccount = async (userId) => {
   try {
 

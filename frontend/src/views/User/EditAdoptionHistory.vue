@@ -109,6 +109,11 @@ class="mx-auto pa-10"
                   {{ item.raw.name }}
                 </strong>
               </template>
+              <template v-slot:subtitle>
+           <p :class="getStatusClass(item.raw.status)">
+    {{ item.raw.status }}
+  </p>
+              </template>
             </v-list-item>
 
             <v-table density="compact" class="text-caption">
@@ -185,7 +190,20 @@ function onClickSeeAll() {
   }
 }
 
-
+const getStatusClass = (status) => {
+  switch (status) {
+    case 'completed':
+      return 'text-success'; // Green for completed
+    case 'approved':
+      return 'text-primary'; // Blue for approved
+    case 'denied':
+      return 'text-danger'; // Red for denied
+    case 'unclaimed':
+      return 'text-warning'; // Yellow for unclaimed
+    default:
+      return ''; // Default class if no match
+  }
+};
 const petsAdopted = ref([]);
 const fetchAdoptionHistory = async () => {
   try {
@@ -203,6 +221,18 @@ const fetchAdoptionHistory = async () => {
 
 onMounted(() => {
   fetchAdoptionHistory();
+  const isMobile = /iPhone|Android/i.test(window.navigator.userAgent);
+      const isTablet = /iPad|Tablet/i.test(window.navigator.userAgent);
+
+      if (isMobile) {
+        itemsPerPage.value = 1;
+      } else if (isTablet) {
+        itemsPerPage.value = 2; // Set to 2 for iPads and possibly other tablets
+      } else {
+        // You can add more conditions for different devices or screen sizes
+        itemsPerPage.value = 2; // Default for larger screens (non-mobile devices)
+      }
+    
 });
 
 </script>

@@ -22,6 +22,7 @@
       :items="transactions"
       :search="search"
       class="elevation-1 pa-4"
+      height="30rem"
     >
       <template v-slot:item.photoUrl="{ item }">
         <div class="my-2">

@@ -44,14 +44,15 @@
           class="me-2"
           @click="editPet(item)"
         >
-          mdi-pencil
+          mdi-pencil 
         </v-icon>
+        
         <v-icon
-          size="small"
-          @click="archivePet(item.pet_id)" 
-        >
-          mdi-delete
-        </v-icon>
+        size="small"
+        @click="showArchiveDialog(item.pet_id)"
+      >
+        mdi-delete
+      </v-icon>
       </template>
       
       </v-data-table>
@@ -61,6 +62,7 @@
   width="auto"
   v-model="dialog"
   persistent
+  scrollable
 >
   <template v-slot:default="{ isActive }">
     <v-card width="900px">
@@ -78,7 +80,7 @@
         ></v-img>
       </div>
       <v-card-text>
-        <v-row align="center" justify="center">
+        <v-row align="center" justify="center" >
           <v-col cols="8">
             <v-form validate-on="blur" ref="form" @submit.prevent="addOrUpdatePet"> <!-- Change to addPet -->
               <v-row>
@@ -174,7 +176,7 @@
   </template>
 </v-dialog>
 
-
+<ConfirmationDialog ref="confirmationDialog" :title="dialog2Title" :message="dialogMessage" :color="color" @confirm="handleConfirm" @cancel="handleCancel" />
     <DynamicSnackbar ref="snackbar" />
     </v-card>
 
@@ -187,6 +189,7 @@
   import { useUserStore } from '@/stores/userStore'
   import { baseUrl } from '@/config/config.js';
   import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
+  import ConfirmationDialog from '@/components/dialogs/confirmationDialog.vue';
 
   import {  
   nameRule, profileRule, petAgeRule
@@ -226,6 +229,42 @@ const dialogTitle = ref('Add New Pet');
 ];
 
   const pets = ref([])
+
+
+  const confirmationDialog = ref(null); // Define a ref for the confirmation dialog
+    const currentPet = ref(null); // Define a ref to store the current pet to be archived
+    const dialog2Title = ref('Confirm Archive');
+    const dialogMessage = ref('Are you sure you want to archive this pet?');
+    const color = ref('warning');
+
+    const showArchiveDialog = (petId) => {
+  // Find the pet with the provided petId
+  const pet = pets.value.find(p => p.pet_id === petId); // Ensure pet_id matches the property name
+  if (pet) {
+    currentPet.value = pet;
+    dialogMessage.value = `Are you sure you want to archive ${pet.name}?`; // Store the current pet to be archived
+    confirmationDialog.value.openDialog(); 
+    console,console.log(petId);// Open the confirmation dialog
+  }
+};
+
+
+const handleConfirm = async () => {
+  if (currentPet.value && currentPet.value.pet_id) {
+    // Perform archiving action here using currentPet.value.petId
+    await archivePet(currentPet.value.pet_id);
+    confirmationDialog.value.closeDialog(); // Close the confirmation dialog
+    currentPet.value = null; // Reset currentPet after archiving
+  } else {
+    console.error('Pet ID is missing');
+  }
+};
+
+
+    const handleCancel = () => {
+      // Reset currentPet if the user cancels
+      currentPet.value = null;
+    };
 
 
   function editPet(pet) {
