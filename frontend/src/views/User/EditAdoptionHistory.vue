@@ -172,11 +172,19 @@ import { baseUrl } from '@/config/config.js';
 const router = useRouter();
 const userStore = useUserStore();
 
-const itemsPerPage = shallowRef(4);
+const itemsPerPage = shallowRef(1);
+const seeAll=ref(false);
 
 function onClickSeeAll() {
-  itemsPerPage.value = itemsPerPage.value === 4 ? petsAdopted.value.length : 4;
+  seeAll.value = !seeAll.value; // Toggle seeAll value
+
+  if (seeAll.value === true) {
+    itemsPerPage.value = petsAdopted.value.length; // Show all items
+  } else {
+    itemsPerPage.value = 1; // Show limited items per page
+  }
 }
+
 
 const petsAdopted = ref([]);
 const fetchAdoptionHistory = async () => {

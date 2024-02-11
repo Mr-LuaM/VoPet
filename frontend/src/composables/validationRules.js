@@ -60,3 +60,11 @@ export const zipCodeRule = [
   v => !!v || 'Zip code is required',
   v => /^\d{4}$/.test(v) || 'Zip code must be 4 digits',
 ];
+
+// petAge validation rule
+export const petAgeRule = [
+  v => !!v || 'Age is required',
+  v => !isNaN(parseFloat(v)) && isFinite(v) || 'Age must be a number',
+  // Optionally, add a rule for age range, e.g., 0 to 20 years
+  v => (v >= 0 && v <= 20) || 'Age must be between 0 and 20 years', // Adjust range as needed
+];

@@ -113,9 +113,9 @@ const userRoutes = [
         component: () => import('../views/User/News.vue'),
       },
       {
-        path: 'GIS', // Path: /user/GIS
+        path: 'gis-map', // Path: /user/GIS
         name: 'userGIS',
-        component: () => import('../views/User/Profile.vue'),
+        component: () => import('../views/User/GIS.vue'),
       },
       {
         path: 'contact', // Path: /user/contacts
