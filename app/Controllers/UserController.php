@@ -186,7 +186,7 @@ public function getPetCounts()
     $userId = $decoded->sub;
 
     // Count the available pets from the pets table
-    $availableQuery = $this->db->query('SELECT COUNT(*) AS available FROM pets');
+    $availableQuery = $this->db->query("SELECT COUNT(*) AS available FROM pets WHERE status = 'available'");
     $availableResult = $availableQuery->getRow();
 
     // Count the pets with status 'processing' from the transactions table
@@ -194,7 +194,7 @@ public function getPetCounts()
     $processingResult = $processingQuery->getRow();
 
     // Count the pets with status 'adopted' from the transactions table
-    $adoptedQuery = $this->db->query("SELECT COUNT(*) AS adopted FROM transactions WHERE user_id = $userId AND status = 'adopted'");
+    $adoptedQuery = $this->db->query("SELECT COUNT(*) AS adopted FROM transactions WHERE user_id = $userId AND status = 'completed'");
     $adoptedResult = $adoptedQuery->getRow();
 
     // Combine the results into a single array
@@ -297,12 +297,15 @@ public function adoptionHistory() {
         $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
         $userId = $decoded->sub;
 
-        // Fetch adoption history data from the database
-        $adoptionHistory = $this->db->table('transactions')
-            ->join('pets', 'transactions.pet_id = pets.pet_id')
-            ->where('transactions.user_id', $userId)
-            ->select('pets.pet_id, pets.name, pets.age, pets.species, pets.breed, pets.status,pets.photo, transactions.created_at, transactions.updated_at')
-            ->get()->getResultArray();;
+    // Fetch adoption history data from the database, sorted by the most recent transactions
+    $adoptionHistory = $this->db->table('transactions')
+    ->join('pets', 'transactions.pet_id = pets.pet_id')
+    ->where('transactions.user_id', $userId)
+    ->select('pets.pet_id, pets.name, pets.age, pets.species, pets.breed, pets.photo, transactions.status, transactions.created_at, transactions.updated_at')
+    ->orderBy('transactions.created_at', 'DESC') // Sort by the most recent creation date
+    ->get()
+    ->getResultArray();
+
 
         // Return adoption history data as JSON response
         return $this->respond( $adoptionHistory);

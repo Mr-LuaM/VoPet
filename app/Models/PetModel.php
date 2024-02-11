@@ -12,7 +12,7 @@ class PetModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['name', 'age', 'species', 'breed', 'status', 'info', 'photo', 'created_at', 'updated_at'];
+    protected $allowedFields    = ['name', 'age', 'species', 'breed', 'status', 'info', 'photo', 'created_at', 'updated_at', 'gender'];
 
     protected bool $allowEmptyInserts = false;
 

@@ -77,7 +77,6 @@ class AuthController extends ResourceController
 
  public function verifyOtp()
 {
-    $session = session();
     $json = $this->request->getJSON();
     $email = $json->email ?? '';
     $otp = $json->otp ?? '';
@@ -93,12 +92,13 @@ class AuthController extends ResourceController
    }
 
     // Check for excessive verification attempts
+    $minutesSinceLastAttempt = null; // Initialize the variable
     if ($user['verification_attempts'] >= 5) {
         $lastAttemptTime = new \DateTime($user['last_attempt_time']);
         $currentTime = new \DateTime();
         $diff = $currentTime->diff($lastAttemptTime);
         $minutesSinceLastAttempt = ($diff->days * 24 * 60) + ($diff->h * 60) + $diff->i;
-
+    
         if ($minutesSinceLastAttempt < 10) {
             return $this->fail("Too many attempts. Please try again in " . (10 - $minutesSinceLastAttempt) . " minutes.");
         }
@@ -106,8 +106,7 @@ class AuthController extends ResourceController
 
     // Increment verification attempts and update last attempt time
     // Reset attempts if 10 minutes have passed since the last attempt
-    $verificationAttempts = ($minutesSinceLastAttempt >= 10) ? 1 : $user['verification_attempts'] + 1;
-    $this->users->update($user['user_id'], [
+    $verificationAttempts = ($minutesSinceLastAttempt >= 10 || $minutesSinceLastAttempt === null) ? 1 : $user['verification_attempts'] + 1;    $this->users->update($user['user_id'], [
         'last_attempt_time' => date('Y-m-d H:i:s'),
         'verification_attempts' => $verificationAttempts,
     ]);
@@ -185,6 +184,9 @@ class AuthController extends ResourceController
     if (!$user) {
         return $this->failNotFound('User not found');
     }
+        if (!$user['email_confirmed']) {
+            return $this->failUnauthorized('Email not confirmed. Please verify your email before logging in.');
+        }
 
     // Check if account is suspended
     if (isset($user['status']) && $user['status'] === 'suspended') {

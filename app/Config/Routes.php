@@ -36,5 +36,20 @@ $routes->group('admin', function($routes) {
     $routes->post('addUser', 'AdminController::addUser');
     $routes->post('updateUserRole', 'AdminController::updateUserRole');
     $routes->post('removeUserAccount', 'AdminController::removeUserAccount');
+    $routes->get('pets', 'AdminController::getPets');
+    $routes->post('addPet', 'AdminController::addPet');
+    $routes->post('updatePet', 'AdminController::updatePet');
+    $routes->post('archivePet', 'AdminController::archivePet');
+    $routes->get('transactions', 'AdminController::getTransactions');
+    $routes->post('approveTransaction', 'AdminController::approveTransaction');
+    $routes->post('rejectTransaction', 'AdminController::rejectTransaction');
+    $routes->get('transactionsHistory', 'AdminController::getTransactionsHistory');
+    $routes->post('markTransactionAsCompleted', 'AdminController::markTransactionAsCompleted');
+    $routes->post('markTransactionAsUnclaimed', 'AdminController::markTransactionAsUnclaimed');
+    $routes->get('user-locations', 'AdminController::userLocations');
+
+
+
+
 });
 $routes->get('test', 'AuthController::test');
