@@ -566,12 +566,184 @@ public function userLocations() {
     // Return the result set as JSON
     return $this->response->setJSON($results);
 }
+public function getVetInfo()
+{
+   
+    $data = $this->officeContacts->findAll();
+
+    return $this->respond($data);
+}
+public function updateVetInfo()
+{
+    $json = $this->request->getJSON(true);
+
+    $types = [
+        'email' => 'email',
+        'contact_number' => 'phone',
+        'address' => 'address',
+        'social_media_link' => 'social media',
+    ];
+
+    $successUpdates = [];
+    $failedUpdates = [];
+
+    foreach ($types as $key => $type) {
+        if (isset($json[$key])) {
+            $builder = $this->db->table('office_contacts'); // Assuming 'office_contacts' is your table name
+            $builder->set('value', $json[$key]);
+            $builder->where('type', $type);
+            $result = $builder->update();
+
+            if ($result) {
+                $successUpdates[] = $type;
+            } else {
+                $failedUpdates[] = $type;
+            }
+        }
+    }
+
+    if (empty($failedUpdates)) {
+        return $this->respondUpdated(['message' => 'Vet info updated successfully']);
+    } else {
+        return $this->fail('Failed to update: ' . join(', ', $failedUpdates));
+    }
+}
+public function getAnnouncements()
+{
+    $builder = $this->db->table('announcements');
+    
+    // Perform a join with the users table
+    $builder->select('announcements.announcement_id, announcements.title, announcements.content, announcements.created_at, announcements.updated_at, announcements.image_url, users.fname, users.lname, users.picture_url');
+    $builder->join('users', 'users.user_id = announcements.user_id');
+    
+    // Order by created_at column in descending order
+    $builder->orderBy('announcements.created_at', 'DESC');
+    
+    $announcements = $builder->get()->getResultArray();
+
+    return $this->respond(['items' => $announcements]);
+}
+
+public function deleteAnnouncement()
+    {
+        // Get the announcementId from the request data
+        $announcementId = $this->request->getVar('announcementId');
+
+        // Check if the announcementId is provided
+        if (empty($announcementId)) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Announcement ID is missing']);
+        }
+
+        // Instantiate the AnnouncementModel
 
 
+        try {
+            // Delete the announcement from the database
+            $this->announcements->delete($announcementId);
 
+            return $this->response->setStatusCode(200)->setJSON(['message' => 'Announcement deleted successfully']);
+        } catch (\Exception $e) {
+            // Handle deletion error
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Error deleting announcement']);
+        }
+    }
+    public function updateAnnouncement()
+    {
+        // Validate incoming request if needed
+        $validationRules = [
+            'title' => 'required',
+            'content' => 'required',
+            'announcement_id' => 'required|numeric', // Change 'announcement_id' to 'id'
+        ];
+    
+        if (!$this->validate($validationRules)) {
+            return $this->failValidationErrors($this->validator->getErrors());
+        }
+    
+        // Extract data from the request
+        $announcementId = $this->request->getVar('announcement_id'); // Change 'announcement_id' to 'id'
+        $title = $this->request->getVar('title');
+        $content = $this->request->getVar('content');
+    
+        // Load the AnnouncementModel instance
+        $announcement = $this->announcements->find($announcementId);
+    
+        if (!$announcement) {
+            return $this->failNotFound('Announcement not found');
+        }
+    
+        // Prepare data to update
+        $dataToUpdate = [
+            'title' => $title,
+            'content' => $content,
+        ];
+    
+        // Include user id in the announcement data
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $userId = $decoded->sub;
+    
+        // Retrieve the role of the user making the request
+        $user = $this->users->find($userId);
+    
+        // Add user id to the announcement data
+        $dataToUpdate['user_id'] = $user['user_id'];
+    
+        // Update announcement fields
+        $this->announcements->update($announcementId, $dataToUpdate);
+    
+        // Check if the announcement was successfully updated
+        $updatedAnnouncement = $this->announcements->find($announcementId);
+        if ($updatedAnnouncement) {
+            return $this->respondUpdated(['message' => 'Announcement updated successfully']);
+        } else {
+            return $this->failServerError('Failed to update announcement');
+        }
+    }
+    
+    
+    public function addAnnouncement()
+{
+    // Validate incoming request if needed
+    $validationRules = [
+        'title' => 'required',
+        'content' => 'required',
+        // You might have additional validation rules here
+    ];
 
+    if (!$this->validate($validationRules)) {
+        return $this->failValidationErrors($this->validator->getErrors());
+    }
 
+    // Extract data from the request
+    $title = $this->request->getVar('title');
+    $content = $this->request->getVar('content');
 
+    // Include user id in the announcement data
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $userId = $decoded->sub;
+
+    // Retrieve the role of the user making the request
+    $user = $this->users->find($userId);
+
+    // Prepare data to add announcement
+    $dataToAdd = [
+        'title' => $title,
+        'content' => $content,
+        'user_id' => $user['user_id'], // Add user id to the announcement data
+        // You can add more fields here if needed
+    ];
+
+    // Insert the new announcement
+    if ($this->announcements->insert($dataToAdd)) {
+        return $this->respondCreated(['message' => 'Announcement added successfully']);
+    } else {
+        return $this->failServerError('Failed to add announcement');
+    }
+}
+
+    
 
 
 

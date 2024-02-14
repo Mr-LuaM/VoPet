@@ -47,6 +47,13 @@ $routes->group('admin', function($routes) {
     $routes->post('markTransactionAsCompleted', 'AdminController::markTransactionAsCompleted');
     $routes->post('markTransactionAsUnclaimed', 'AdminController::markTransactionAsUnclaimed');
     $routes->get('user-locations', 'AdminController::userLocations');
+    $routes->get('vet-info', 'AdminController::getVetInfo');
+    $routes->post('updateVetInfo', 'AdminController::updateVetInfo');
+    $routes->get('getAnnouncements', 'AdminController::getAnnouncements');
+    $routes->post('deleteAnnouncement', 'AdminController::deleteAnnouncement');
+    $routes->post('updateAnnouncement', 'AdminController::updateAnnouncement');
+    $routes->post('addAnnouncement', 'AdminController::addAnnouncement');
+
 
 
 
