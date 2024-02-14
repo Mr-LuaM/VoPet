@@ -107,7 +107,7 @@
 
         <template v-slot:append>
           <div class="pa-2">
-            <v-btn @click="logout" block variant="flat" class="bg-info">Settings</v-btn>
+            <v-btn @click="this.$router.push('settings');" block variant="flat" class="bg-info">Settings</v-btn>
           </div>
           <div class="pa-2">
             <v-btn @click="userStore.logout" block variant="flat"  class="bg-error">Logout</v-btn>

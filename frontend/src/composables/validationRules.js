@@ -68,3 +68,8 @@ export const petAgeRule = [
   // Optionally, add a rule for age range, e.g., 0 to 20 years
   v => (v >= 0 && v <= 20) || 'Age must be between 0 and 20 years', // Adjust range as needed
 ];
+
+export const socialmediaLinkRule= [
+  v => !!v || 'Social media link is required',
+  v => /^(https?:\/\/)?(www\.)?(facebook\.com|twitter\.com|instagram\.com|linkedin\.com)\/.+$/i.test(v) || 'Please enter a valid social media link (Facebook, Twitter, Instagram, LinkedIn)',
+];

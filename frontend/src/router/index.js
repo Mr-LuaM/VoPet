@@ -110,6 +110,21 @@ const adminRoutes = [
       name: 'admin-security',
       component: () => import('../views/Admin/EditSecurity.vue'),
     },
+    {
+      path: 'settings', // Path: /user/edit/security
+      name: 'settings',
+      component: () => import('../views/Admin/Settings.vue'),
+    },
+    {
+      path: 'edit/vet-info', // Path: /user/edit/security
+      name: 'admin-edit-vet-info',
+      component: () => import('../views/Admin/EditVetInfo.vue'),
+    },
+    {
+      path: 'edit/app-name', // Path: /user/edit/security
+      name: 'admin-edit-app-name',
+      component: () => import('../views/Admin/EditAppName.vue'),
+    },
     ]
   },
 
