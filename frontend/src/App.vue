@@ -7,4 +7,5 @@
 </template>
 
 <script setup>
+import { app, messaging } from "@/firebase";
 </script>
