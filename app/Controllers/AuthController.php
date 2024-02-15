@@ -352,5 +352,24 @@ $user = $this->users->select($personalInfoFields)->find($userId);
             return $this->failUnauthorized('Invalid token');
         }
     }
+
+    public function saveToken()
+{
+    // Get the user ID from the JWT token
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $userId = (int) $decoded->sub; // Correct syntax for casting to integer
+
+    $fcmToken = $this->request->getVar('fcm_token');
+
+    if ($userId && $fcmToken) {
+        // Use where clause to specify the user and then update
+        $this->users->update($userId,['fcm_token' => $fcmToken]);
+        return $this->respond(['message' => 'FCM token updated successfully']);
+    }
+
+    return $this->fail('User ID or FCM token is missing');
+}
+
     
 }

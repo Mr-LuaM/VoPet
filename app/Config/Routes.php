@@ -15,6 +15,9 @@ $routes->group('auth', function($routes) {
     $routes->post('login', 'AuthController::login');
     $routes->post('forgotpassword', 'AuthController::forgotPassword');
     $routes->post('resetpassword', 'AuthController::resetPassword');
+    $routes->post('resetpassword', 'AuthController::resetPassword');
+    $routes->post('save-token', 'AuthController::saveToken');
+
 
     $routes->get('fetchuserdetails', 'AuthController::userDetails');
 });

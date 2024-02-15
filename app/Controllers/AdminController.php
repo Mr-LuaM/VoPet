@@ -17,6 +17,9 @@ class AdminController extends BaseController
 {
     use SendVerificationEmail;
     use ResponseTrait;
+
+    protected $firebaseServerKey = 'AAAAGdrwYnc:APA91bGXw5cv3F3unpb56ySKuWglwbUrCNnYbsyZ7RxDCHLTHSIapFcRmcNoOpWIYIBY928el1PEN39VOyK_kqu1T13Pq78GqvrTg8T8EDmAxFY2Iv0S_B9E9Jf-TDL2RTaSZyXlx-IX';
+
     private $users;
     private $announcements;
 
@@ -703,45 +706,94 @@ public function deleteAnnouncement()
     
     
     public function addAnnouncement()
-{
-    // Validate incoming request if needed
-    $validationRules = [
-        'title' => 'required',
-        'content' => 'required',
-        // You might have additional validation rules here
-    ];
+    {
+        // Validate incoming request if needed
+        $validationRules = [
+            'title' => 'required',
+            'content' => 'required',
+            // You might have additional validation rules here
+        ];
+    
+        if (!$this->validate($validationRules)) {
+            return $this->failValidationErrors($this->validator->getErrors());
+        }
+    
+        // Extract data from the request
+        $title = $this->request->getVar('title');
+        $content = $this->request->getVar('content');
+    
+        // Include user id in the announcement data
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $userId = $decoded->sub;
+    
+        // Prepare data to add announcement
+        $dataToAdd = [
+            'title' => $title,
+            'content' => $content,
+            'user_id' => $userId, // Use the decoded user id directly
+            // You can add more fields here if needed
+        ];
+    
+        // Insert the new announcement
+        if ($this->announcements->insert($dataToAdd)) {
+            // Retrieve FCM tokens of users and send notifications
+            $tokens = $this->getFCMTokens();
+            $title = 'New Announcement';
+            $body = 'Check out the latest announcement: ' .  $dataToAdd['title'];    
+            $result = $this->sendPushNotification($tokens, $title, $body);
+    
+            
+            // Handle the result if needed
+            // For example, log the result or return a response based on success/failure
+    
+            return $this->respondCreated(['message' =>  $result]);
+        } else {
+            return $this->failServerError('Failed to add announcement');
+        }
+    }
+    
+    private function getFCMTokens()
+    {
+        $users = $this->users->findAll(); // Assuming `$this->users` is your user model instance
+        $tokens = [];
+    
+        foreach ($users as $user) {
+            if (!empty($user['fcm_token'])) {
+                $tokens[] = $user['fcm_token'];
+            }
+        }
+    
+        return $tokens;
+    }
+    public function sendPushNotification($tokens, $title, $body)
+    {
+        $url = 'https://fcm.googleapis.com/fcm/send';
+        $headers = [
+            'Authorization: key=' . $this->firebaseServerKey,
+            'Content-Type: application/json'
+        ];
 
-    if (!$this->validate($validationRules)) {
-        return $this->failValidationErrors($this->validator->getErrors());
+        $fields = [
+            'registration_ids' => $tokens,
+            'notification' => [
+                'title' => $title,
+                'body' => $body,
+            ]
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        return json_decode($result, true);
     }
 
-    // Extract data from the request
-    $title = $this->request->getVar('title');
-    $content = $this->request->getVar('content');
-
-    // Include user id in the announcement data
-    $jwt = $this->request->getHeaderLine('Authorization');
-    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
-    $userId = $decoded->sub;
-
-    // Retrieve the role of the user making the request
-    $user = $this->users->find($userId);
-
-    // Prepare data to add announcement
-    $dataToAdd = [
-        'title' => $title,
-        'content' => $content,
-        'user_id' => $user['user_id'], // Add user id to the announcement data
-        // You can add more fields here if needed
-    ];
-
-    // Insert the new announcement
-    if ($this->announcements->insert($dataToAdd)) {
-        return $this->respondCreated(['message' => 'Announcement added successfully']);
-    } else {
-        return $this->failServerError('Failed to add announcement');
-    }
-}
 
     
 
