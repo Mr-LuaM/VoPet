@@ -28,6 +28,8 @@ class AdminController extends BaseController
     private$pets;
 
     private $transactions;
+    private $medicalHistory;
+    private $messages;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -35,7 +37,8 @@ class AdminController extends BaseController
         $this->officeContacts = new \App\Models\OfficeContactsModel();
         $this->pets = new \App\Models\PetModel();
         $this->transactions = new \App\Models\TransactionModel();
-
+        $this->medicalHistory = new \App\Models\MedicalHistoryModel();
+        $this->messages = new \App\Models\MessagesModel();
         $this->db = \Config\Database::connect();
     }
 
@@ -361,6 +364,11 @@ public function approveTransaction()
         $transactionId = isset($json->transaction_id) ? (int)$json->transaction_id : 0;
         $status = $json->status ?? '';
 
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $loggedInUserId = $decoded->sub;
+
+
         // Start transaction
         $db->transStart();
 
@@ -372,6 +380,28 @@ public function approveTransaction()
 
         // Update the transaction status to "approved"
         $this->transactions->update($transactionId, ['status' => $status]);
+
+        $pet = $this->pets->find($transaction['pet_id']);
+        if (!$pet) {
+            return $this->failNotFound('Pet not found');
+        }
+
+
+        $receiverId =  $transaction['user_id'];
+        $messageData = [
+            'sender_id' => $loggedInUserId,
+            'receiver_id' => $receiverId,
+            'content' => 'Adoption approved for pet ID: ' . $pet['pet_id'] . ' named '. $pet['name'] ,
+        ];
+        $this->messages->insert($messageData);
+
+        $messageData = [
+            'sender_id' => $loggedInUserId,
+            'receiver_id' => $receiverId,
+            'content' => 'Please visit our till next week to claim' ,
+        ];
+        $this->messages->insert($messageData);
+
 
 
         // Complete the transaction
@@ -407,6 +437,9 @@ public function rejectTransaction()
             return $this->failValidationError('Invalid transaction ID.');
         }
 
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $loggedInUserId = $decoded->sub;
         $db->transStart(); // Begin transaction
 
         // Retrieve the transaction to get the associated pet ID
@@ -421,6 +454,22 @@ public function rejectTransaction()
         // Update the pet's status back to 'available'
         $petId = $transaction['pet_id'];
         $this->pets->update($petId, ['status' => 'available']);
+
+
+
+        $pet = $this->pets->find($transaction['pet_id']);
+        if (!$pet) {
+            return $this->failNotFound('Pet not found');
+        }
+
+
+        $receiverId =  $transaction['user_id'];
+        $messageData = [
+            'sender_id' => $loggedInUserId,
+            'receiver_id' => $receiverId,
+            'content' => 'Adoption rejected for pet ID: ' . $pet['pet_id'] . ' named '. $pet['name'] ,
+        ];
+        $this->messages->insert($messageData);
 
         $db->transComplete(); // Attempt to commit the transaction
 
@@ -794,10 +843,106 @@ public function deleteAnnouncement()
         return json_decode($result, true);
     }
 
+    public function getMedicalHistory()
+    {
+        // Initialize models
+        
+        // Fetch medical history data along with associated pet info
+        // Only fetch records marked as correct
+        $medicalHistory = $this->medicalHistory
+            ->select('medical_history.*, pet.name as pet_name, pet.age, pet.species, pet.breed, pet.photo')
+            ->join('pets as pet', 'pet.pet_id = medical_history.pet_id')
+            ->where('medical_history.is_correct', TRUE) // Add this line to filter by `is_correct`
+            ->orderBy('medical_history.created_at', 'DESC') // Sort by `created_at` in descending order
+            ->findAll();
+        
+        return $this->response->setJSON(['status' => 'success', 'data' => $medicalHistory]);
+    }
+    public function markTransactionAsNotCorrect()
+    {
+       (int) $id = $this->request->getVar('id');
+        $isCorrect = $this->request->getVar('is_correct');
 
+        // Load the model
+
+        // Check if the transaction exists
+        $transaction = $this->medicalHistory->find($id);
+
+        if (!$transaction) {
+            return $this->failNotFound('Transaction not found.');
+        }
+
+        // Update the is_correct field
+        $data = ['is_correct' => $isCorrect];
+        $this->medicalHistory->update($id, $data);
+
+        // Respond with a success message
+        return $this->respond(['message' => 'Transaction marked as not correct.']);
+    }
     
+public function addMedicalHistory()
+    {
+        $requestData = $this->request->getJSON(); // Get JSON data from request
+        // Validate the data if necessary
 
+        // Process the data and store it in the database
+        // Example: Assuming you have a MedicalHistory model
+        $medicalHistoryModel = new \App\Models\MedicalHistoryModel();
+        $medicalHistoryModel->insert($requestData);
 
-
+        // Return a success response
+        return $this->response->setStatusCode(201)->setJSON(['status' => 'success', 'message' => 'Medical history added successfully']);
+    }
+    public function messages()
+    {
+        // Include user id in the announcement data
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $loggedInUserId = $decoded->sub;
+    
+        // Get the receiver_id from the request body
+        $receiverId = $this->request->getVar('receiver_id');
+    
+        // Fetch messages exchanged between the logged-in user and the specified receiver
+        $messages = $this->db->table('messages')
+            ->select('message_id, sender_id, receiver_id, content, created_at')
+            ->where('sender_id', $loggedInUserId)
+            ->where('receiver_id', $receiverId)
+            ->orWhere('sender_id', $receiverId)
+            ->where('receiver_id', $loggedInUserId)
+            ->orderBy('created_at', 'ASC')
+            ->get()
+            ->getResult();
+    
+        // Return the fetched messages as a JSON response
+        return $this->respond($messages);
+    }
+    public function sendMessages()
+    {
+        // Include user id in the announcement data
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $loggedInUserId = $decoded->sub;
+    
+        // Get the content, sender_id, created_at, and receiver_id from the request body
+        $content = $this->request->getVar('content');
+        $createdAt = $this->request->getVar('created_at');
+        $receiverId = $this->request->getVar('receiver_id');
+    
+        // Insert the message into the database
+        $this->messages->insert([
+            'content' => $content,
+            'sender_id' => $loggedInUserId,
+            'created_at' => $createdAt,
+            'receiver_id' => $receiverId
+        ]);
+    
+        // Optionally, you can return a success message or response
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Message sent successfully.'
+        ]);
+    }
+    
 
 }

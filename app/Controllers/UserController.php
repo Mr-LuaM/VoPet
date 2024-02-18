@@ -23,6 +23,9 @@ class UserController extends ResourceController
     private$pets;
 
     private $transactions;
+
+    private $medicalHistory;
+    private $messages;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -30,7 +33,8 @@ class UserController extends ResourceController
         $this->officeContacts = new \App\Models\OfficeContactsModel();
         $this->pets = new \App\Models\PetModel();
         $this->transactions = new \App\Models\TransactionModel();
-
+        $this->medicalHistory = new \App\Models\MedicalHistoryModel();
+        $this->messages = new \App\Models\MessagesModel();
         $this->db = \Config\Database::connect();
     }
     
@@ -166,7 +170,8 @@ public function getAnnouncements(){
         // Perform a join with the users table
         $builder->select('announcements.title, announcements.content, announcements.created_at, announcements.updated_at, announcements.image_url, users.fname, users.lname, users.picture_url');
         $builder->join('users', 'users.user_id = announcements.user_id');
-        
+        $builder->orderBy('announcements.created_at', 'DESC');
+
         $announcements = $builder->get()->getResultArray();
 
         return $this->respond(['items' => $announcements]);
@@ -252,6 +257,14 @@ public function adopt()
     $this->transactions->insert($transactionData);
 
     // Optionally, perform additional actions (e.g., sending notifications)
+     // Insert a message into the messages table
+     $receiverId = $this->users->select('user_id')->where('role', 'admin')->first();
+     $messageData = [
+         'sender_id' => $userId,
+         'receiver_id' => $receiverId,
+         'content' => 'Adoption requested for pet ID: ' . $petId . ' named '. $pet['name'] ,
+     ];
+     $this->messages->insert($messageData);
 
     // Send a success response
     return $this->respond(['message' => 'Pet adoption requested successfully'], 200);
@@ -297,24 +310,100 @@ public function adoptionHistory() {
         $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
         $userId = $decoded->sub;
 
-    // Fetch adoption history data from the database, sorted by the most recent transactions
-    $adoptionHistory = $this->db->table('transactions')
-    ->join('pets', 'transactions.pet_id = pets.pet_id')
-    ->where('transactions.user_id', $userId)
-    ->select('pets.pet_id, pets.name, pets.age, pets.species, pets.breed, pets.photo, transactions.status, transactions.created_at, transactions.updated_at')
-    ->orderBy('transactions.created_at', 'DESC') // Sort by the most recent creation date
-    ->get()
-    ->getResultArray();
+        // Fetch adoption and medical history data from the database
+        $adoptionHistory = $this->db->table('transactions')
+            ->join('pets', 'transactions.pet_id = pets.pet_id')
+            ->join('medical_history', 'pets.pet_id = medical_history.pet_id', 'left') // Assuming you have a medical history table
+            ->where('transactions.user_id', $userId)
+            ->select('pets.pet_id, pets.name, pets.age, pets.species, pets.breed, pets.photo, transactions.status, transactions.created_at, transactions.updated_at, medical_history.medical_condition, medical_history.medication, medical_history.dosage') // Add columns from medical history table as needed
+            ->orderBy('transactions.created_at', 'DESC') // Sort by the most recent creation date
+            ->get()
+            ->getResultArray();
 
-
-        // Return adoption history data as JSON response
-        return $this->respond( $adoptionHistory);
+        // Return adoption and medical history data as JSON response
+        return $this->respond($adoptionHistory);
     } catch (Exception $e) {
         // Handle exceptions (e.g., database errors)
         return $this->failServerError('An error occurred');
     }
 }
+public function medicalHistory()
+{
+    // Decode the JWT token to get the user ID
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $userId = $decoded->sub;
 
+    // Fetch transactions for the user
 
+    $transactions = $this->transactions->where('user_id', $userId)->findAll();
+
+    // Extract pet IDs from transactions
+    $petIds = array_column($transactions, 'pet_id');
+
+    // Fetch pets' details using pet IDs
+
+    $pets = $this->pets->whereIn('pet_id', $petIds)->findAll();
+
+    // Fetch medical history for each pet
+
+    foreach ($pets as &$pet) {
+        $pet['medical_history'] = $this->medicalHistory->where('pet_id', $pet['pet_id'])->findAll();
+    }
+
+    // Return the response
+    return $this->respond($pets);
+}
+public function messages()
+{
+    // Include user id in the announcement data
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $loggedInUserId = $decoded->sub;
+
+    // Get the receiver_id from the request body
+    $receiverId = $this->users->select('user_id')->where('role', 'admin')->first();
+
+    // Fetch messages exchanged between the logged-in user and the specified receiver
+    $messages = $this->db->table('messages')
+        ->select('message_id, sender_id, receiver_id, content, created_at')
+        ->where('sender_id', $loggedInUserId)
+        ->where('receiver_id', $receiverId)
+        ->orWhere('sender_id', $receiverId)
+        ->where('receiver_id', $loggedInUserId)
+        ->orderBy('created_at', 'ASC')
+        ->get()
+        ->getResult();
+
+    // Return the fetched messages as a JSON response
+    return $this->respond($messages);
+}
+
+public function sendMessages()
+{
+    // Include user id in the announcement data
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $loggedInUserId = $decoded->sub;
+
+    // Get the content, sender_id, created_at, and receiver_id from the request body
+    $content = $this->request->getVar('content');
+    $createdAt = $this->request->getVar('created_at');
+    $receiverId = $this->users->select('user_id')->where('role', 'admin')->first();;
+
+    // Insert the message into the database
+    $this->messages->insert([
+        'content' => $content,
+        'sender_id' => $loggedInUserId,
+        'created_at' => $createdAt,
+        'receiver_id' => $receiverId
+    ]);
+
+    // Optionally, you can return a success message or response
+    return $this->response->setJSON([
+        'success' => true,
+        'message' => 'Message sent successfully.'
+    ]);
+}
 
 }

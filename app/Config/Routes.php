@@ -33,6 +33,11 @@ $routes->group('user', function($routes) {
     $routes->get('recent-pets', 'UserController::getRecentPets');
     $routes->post('adopt', 'UserController::adopt');
     $routes->get('adoptionHistory', 'UserController::adoptionHistory');
+    $routes->get('medicalHistory', 'UserController::medicalHistory');
+    $routes->get('messages', 'UserController::messages');
+    $routes->post('sendMessages', 'UserController::sendMessages');
+
+
 });
 $routes->group('admin', function($routes) {
     $routes->get('users', 'AdminController::getUsers');
@@ -56,10 +61,18 @@ $routes->group('admin', function($routes) {
     $routes->post('deleteAnnouncement', 'AdminController::deleteAnnouncement');
     $routes->post('updateAnnouncement', 'AdminController::updateAnnouncement');
     $routes->post('addAnnouncement', 'AdminController::addAnnouncement');
-
-
-
-
+    $routes->get('medical-history', 'AdminController::getMedicalHistory');
+    $routes->post('markTransactionAsNotCorrect', 'AdminController::markTransactionAsNotCorrect');
+    $routes->post('addMedicalHistory', 'AdminController::addMedicalHistory');
+    $routes->post('messages', 'AdminController::messages');
+    $routes->post('sendMessages', 'AdminController::sendMessages');
 
 });
+
+$routes->group('form', function($routes) {
+    $routes->get('pets', 'FormController::getPets'); // Maps /form/pets to FormController::getPets method
+});
+
+
+
 $routes->get('test', 'AuthController::test');

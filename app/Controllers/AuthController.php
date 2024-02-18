@@ -224,7 +224,7 @@ class AuthController extends ResourceController
     $key = getenv('JWT_SECRET');
     $payload = [
         'iat' => time(),
-        'exp' => time() + 3600,
+        'exp' => time() + 7200,
         'sub' => $user['user_id'],
     ];
 
