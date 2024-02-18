@@ -61,6 +61,11 @@ const adminRoutes = [
       component: () => import('../views/Admin/PetManagement.vue'),
     },
     {
+      path: 'medicalHistory',
+      name: 'medicalHistory',
+      component: () => import('../views/Admin/MedicalHistory.vue'),
+    },
+    {
       path: 'accountManagement',
       name: 'accountManagement',
       component: () => import('../views/Admin/AccountManagement.vue'),
@@ -216,6 +221,11 @@ const userEditRoutes = [
         path: 'adoptionHistory', // Path: /user/edit/adoptionHistory
         name: 'adoption-history',
         component: () => import('../views/User/EditAdoptionHistory.vue'),
+      },
+      {
+        path: 'medicalHisotry', // Path: /user/edit/adoptionHistory
+        name: 'medical-history',
+        component: () => import('../views/User/EditMedicalHistory.vue'),
       },
      
       

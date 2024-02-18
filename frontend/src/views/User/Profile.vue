@@ -101,6 +101,22 @@
 
 </div>
 
+<div class="px-3 py-0 my-0">  
+
+  <router-link :to="{ name: 'medical-history' }" tag="v-btn" class=" text-decoration-none" >
+      <v-btn
+      block
+      class=" mt-2 rounded-pill"
+      color="secondary"
+      size="large"
+    >
+      Pet Medical History
+    </v-btn>
+    </router-link>
+
+
+</div>
+
 
 <div class="pa-3"> <v-divider></v-divider></div>
 </v-col>

@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center pe-2 py-">
 <a></a>      <v-spacer></v-spacer>
 
-      <v-btn variant="flat" class="ml-4" color="secondary"   @click="openAddAnnouncementDialog">Add New Pet</v-btn>
+      <v-btn variant="flat" class="ml-4" color="secondary"   @click="openAddAnnouncementDialog">Add New Announcement</v-btn>
     </v-card-title>
     <v-list :items="items" item-props lines="three">
       <template v-slot:subtitle="{ subtitle }">
@@ -113,7 +113,6 @@ const items = ref([]);
 
 const isEditMode = ref(false);
 const dialog = ref(false)
-const dialog2Title = ref('Add New Pet');
 
 
 const announcementContent = ref(null);

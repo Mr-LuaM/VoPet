@@ -58,6 +58,8 @@
                 <!-- Display pet details here -->
                 <div class="text-caption font-weight-medium text-grey">Pet ID: {{ pet.pet_id }}</div>
                 <div class="text-caption font-weight-medium text-grey">Name: <span class="text-primary">{{ pet.name }}</span></div>
+                <div class="text-caption font-weight-medium text-grey">Gender: {{ pet.gender }}</div>
+
                 <div class="text-caption font-weight-medium text-grey">Age: {{ pet.age }}</div>
                 <div class="text-caption font-weight-medium text-grey">Species: {{ pet.species }}</div>
                 <div class="text-caption font-weight-medium text-grey">Breed: {{ pet.breed }}</div>

@@ -231,7 +231,9 @@ const approveTransaction = async (transactionId) => {
     };
 
     // Send the request to the backend endpoint responsible for updating the transaction status
-    const response = await axios.post(`/admin/approveTransaction`, payload);
+    const response = await axios.post(`/admin/approveTransaction`, payload, {
+      headers: { Authorization: `Bearer ${userStore.token}` }
+    } );
 
     if (response.status === 200) {
       // Show a success message
@@ -267,7 +269,9 @@ const showRejectDialog = (transactionId) => {
 const rejectTransaction = async (transactionId) => {
   try {
     const payload = { transaction_id: transactionId, status: 'rejected' };
-    const response = await axios.post(`/admin/rejectTransaction`, payload);
+    const response = await axios.post(`/admin/rejectTransaction`, payload, {
+      headers: { Authorization: `Bearer ${userStore.token}` }
+    });
 
     if (response.status === 200) {
       snackbar.value?.openSnackbar('Transaction rejected successfully', 'error');

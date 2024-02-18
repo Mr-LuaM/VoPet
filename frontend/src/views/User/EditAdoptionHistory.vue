@@ -88,7 +88,7 @@ class="mx-auto pa-10"
           :key="i"
           cols="12"
           sm="6"
-          xl="3"
+          xl="6"
         >
           <v-sheet border rounded>
             <v-img
