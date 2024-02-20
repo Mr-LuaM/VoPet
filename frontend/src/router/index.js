@@ -265,16 +265,30 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
 
+  // Check for first-time visit to the startup page
+  if (to.name === 'startup') {
+    if (localStorage.getItem('hasVisitedStartup')) {
+      // If the user has visited the startup page before, redirect to login (or another appropriate page)
+      next({ name: 'login' });
+      return; // Prevent further execution
+    } else {
+      // Mark that the user has now visited the startup page
+      localStorage.setItem('hasVisitedStartup', 'true');
+    }
+  }
+
   const isAuthenticated = userStore.isAuthenticated; 
   const userRole = userStore.role;
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-   await userStore.logout();
+    await userStore.logout();
+    next({ name: 'login' }); // Redirect to login if not authenticated
   } else if (to.meta.requiresAuth && to.meta.role && to.meta.role !== userRole) {
-    next({ name: 'Unauthorized' }); 
+    next({ name: 'Unauthorized' }); // Redirect to an unauthorized page if roles don't match
   } else {
-    next();
+    next(); // Proceed as normal if authenticated or no specific auth requirements
   }
 });
+
 
 export default router;
