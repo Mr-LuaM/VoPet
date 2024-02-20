@@ -12,7 +12,7 @@ class PetLocationsModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['pet_id', 'longitude', 'latitude', 'description', 'created_at'];
+    protected $allowedFields    = ['pet_id', 'longitude', 'latitude', 'created_at','pet_picture', 'address', 'is_rescued'];
 
     protected bool $allowEmptyInserts = false;
 

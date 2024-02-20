@@ -30,6 +30,8 @@ class AdminController extends BaseController
     private $transactions;
     private $medicalHistory;
     private $messages;
+
+    private $petLocations;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -39,6 +41,7 @@ class AdminController extends BaseController
         $this->transactions = new \App\Models\TransactionModel();
         $this->medicalHistory = new \App\Models\MedicalHistoryModel();
         $this->messages = new \App\Models\MessagesModel();
+        $this->petLocations = new \App\Models\PetLocationsModel();
         $this->db = \Config\Database::connect();
     }
 
@@ -943,6 +946,37 @@ public function addMedicalHistory()
             'message' => 'Message sent successfully.'
         ]);
     }
+    public function getPetLocations(){
+        
     
+        $data = $this->petLocations->orderBy('created_at', 'desc')->findAll();
+
+
+        return $this->respond($data);
+    
+    }
+
+    public function markAsRescued()
+    {
+        $json = $this->request->getJSON();
+        if (!isset($json->location_id) || !isset($json->is_rescued)) {
+            return $this->failNotFound('Missing required parameters');
+        }
+
+        $locationId = $json->location_id;
+        $isRescued = filter_var($json->is_rescued, FILTER_VALIDATE_BOOLEAN);
+
+ 
+        $updateData = ['is_rescued' => $isRescued];
+
+        $updated = $this->petLocations->update($locationId, $updateData);
+
+        if ($updated) {
+            return $this->respondUpdated(['message' => 'Pet marked as rescued successfully']);
+        } else {
+            return $this->failServerError('Could not update the pet status');
+        }
+    }
+
 
 }

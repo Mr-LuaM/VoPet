@@ -36,6 +36,8 @@ $routes->group('user', function($routes) {
     $routes->get('medicalHistory', 'UserController::medicalHistory');
     $routes->get('messages', 'UserController::messages');
     $routes->post('sendMessages', 'UserController::sendMessages');
+    $routes->post('petture', 'UserController::petture');
+
 
 
 });
@@ -66,6 +68,8 @@ $routes->group('admin', function($routes) {
     $routes->post('addMedicalHistory', 'AdminController::addMedicalHistory');
     $routes->post('messages', 'AdminController::messages');
     $routes->post('sendMessages', 'AdminController::sendMessages');
+    $routes->get('petLocations', 'AdminController::getPetLocations');
+    $routes->post('markPetAsRescued', 'AdminController::markAsRescued');
 
 });
 

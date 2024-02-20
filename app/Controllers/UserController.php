@@ -26,6 +26,7 @@ class UserController extends ResourceController
 
     private $medicalHistory;
     private $messages;
+    private $petLocations;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -35,6 +36,7 @@ class UserController extends ResourceController
         $this->transactions = new \App\Models\TransactionModel();
         $this->medicalHistory = new \App\Models\MedicalHistoryModel();
         $this->messages = new \App\Models\MessagesModel();
+        $this->petLocations = new \App\Models\PetLocationsModel();
         $this->db = \Config\Database::connect();
     }
     
@@ -406,4 +408,35 @@ public function sendMessages()
     ]);
 }
 
+public function petture(){
+    $file = $this->request->getFile('photo');
+    $locationName = $this->request->getPost('locationName');
+    $latitude = $this->request->getPost('latitude');
+    $longitude = $this->request->getPost('longitude');
+
+    if ($file->isValid() && !$file->hasMoved()) {
+        $newName = $file->getRandomName();
+        $file->move(ROOTPATH . 'public/uploads', $newName); // Ensure this directory exists and is writable
+
+        // Initialize the model and save the data
+        $this->petLocations->save([
+            'longitude' => $longitude,
+            'latitude' => $latitude,
+            'pet_picture' => $newName, // Save the file name of the uploaded picture
+            'address' => $locationName, // Assuming the 'address' field is for the location name
+        ]);
+
+        return $this->respondCreated([
+            'message' => 'File and location data saved successfully',
+            'data' => [
+                'locationName' => $locationName,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'filePath' => WRITEPATH . 'uploads/' . $newName
+            ]
+        ]);
+    }
+
+    return $this->fail('Upload failed', ResponseInterface::HTTP_BAD_REQUEST);
+}
 }
