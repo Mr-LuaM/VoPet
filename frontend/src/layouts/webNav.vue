@@ -76,6 +76,15 @@
    <v-list-item-title>Medical History</v-list-item-title>
  </v-list-item>
 
+    <!-- History -->
+    <v-list-item
+    link
+    to="/admin/rescue"
+    prepend-icon="mdi-ambulance"
+  >
+    <v-list-item-title>Pets to be rescued</v-list-item-title>
+  </v-list-item>
+
   <!-- Divider -->
   <v-container>
     <v-divider></v-divider>

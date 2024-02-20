@@ -81,6 +81,11 @@ const adminRoutes = [
       component: () => import('../views/Admin/History.vue'),
     },
     {
+      path: 'rescue',
+      name: 'rescue',
+      component: () => import('../views/Admin/Rescue.vue'),
+    },
+    {
       path: 'message',
       name: 'message',
       component: () => import('../views/Admin/Message.vue'),
@@ -130,6 +135,7 @@ const adminRoutes = [
       name: 'admin-edit-app-name',
       component: () => import('../views/Admin/EditAppName.vue'),
     },
+    
     ]
   },
 

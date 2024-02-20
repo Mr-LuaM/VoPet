@@ -15,11 +15,11 @@
   
   const show = ref(false);
   const message = ref('');
-  const timeout = ref(2000);
+  const timeout = ref(3000);
   const color = ref('success');
   
   // Function to open the Snackbar from the parent component
-  function openSnackbar(newMessage, newColor = 'success', newTimeout = 2000) {
+  function openSnackbar(newMessage, newColor = 'success', newTimeout = 3000) {
     message.value = newMessage;
     color.value = newColor;
     timeout.value = newTimeout;

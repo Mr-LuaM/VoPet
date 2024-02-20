@@ -1,7 +1,6 @@
 <template>
     <v-card class="ma-3 elevation-5" rounded >
       <v-card-title class="d-flex align-center pe-2 py-">
-        <v-btn append-icon="mdi-export" variant="outlined" color="success">Export</v-btn>
         <v-spacer></v-spacer>
         <v-text-field
           v-model="search"
