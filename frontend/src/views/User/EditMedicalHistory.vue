@@ -33,15 +33,19 @@
   
           <v-col cols="12" sm="8" md="4" class="mx-auto px-10 pa-4">
             <v-list dense>
-              <v-card v-for="(pet, index) in medicalHistoryData" :key="index" variant="outlined"  class="mb-4">
+              <v-card v-for="(pet, index) in medicalHistoryData" :key="index" variant="outlined" class="mb-4">
                 <v-card-title>{{ pet.name }}</v-card-title>
                 <v-card-text>
-                  <p>Status: {{ pet.status }}</p>
-                  <p>Age: {{ pet.age }}</p>
-                  <p>Species: {{ pet.species }}</p>
-                  <p>Breed: {{ pet.breed }}</p>
-                  <p>Created At: {{ pet.created_at }}</p>
-                  <v-list-item-group v-if="pet.medical_history.length > 0">
+                  <!-- Use logical OR operator to display 'OLD PET' if status is null or undefined -->
+                  <p>Status: {{ pet.status || 'OLD PET' }}</p>
+              
+                  <!-- Use v-if to conditionally render paragraphs only if the property is not null -->
+                  <p v-if="pet.age">Age: {{ pet.age }}</p>
+                  <p v-if="pet.species">Species: {{ pet.species }}</p>
+                  <p v-if="pet.breed">Breed: {{ pet.breed }}</p>
+                  <p v-if="pet.created_at">Created At: {{ pet.created_at }}</p>
+              
+                  <v-list-item-group v-if="pet.medical_history && pet.medical_history.length > 0">
                     <v-list-item v-for="(condition, idx) in pet.medical_history" :key="idx">
                       <v-list-item-content>
                         <v-list-item-title>Condition: {{ condition.medical_condition }}</v-list-item-title>
@@ -57,6 +61,7 @@
                   <p v-else>No medical history available.</p>
                 </v-card-text>
               </v-card>
+              
             </v-list>
           </v-col>
         </v-main>
