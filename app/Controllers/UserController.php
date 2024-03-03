@@ -27,6 +27,7 @@ class UserController extends ResourceController
     private $medicalHistory;
     private $messages;
     private $petLocations;
+    private $patientpet;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -37,6 +38,7 @@ class UserController extends ResourceController
         $this->medicalHistory = new \App\Models\MedicalHistoryModel();
         $this->messages = new \App\Models\MessagesModel();
         $this->petLocations = new \App\Models\PetLocationsModel();
+        $this->patientpet = new \App\Models\PatientpetModel();
         $this->db = \Config\Database::connect();
     }
     
@@ -337,25 +339,35 @@ public function medicalHistory()
     $userId = $decoded->sub;
 
     // Fetch transactions for the user
-
-    $transactions = $this->transactions->where('user_id', $userId)->findAll();
+    $transactions = $this->transactions->where('user_id', $userId)->where('status', 'completed')->findAll();
 
     // Extract pet IDs from transactions
     $petIds = array_column($transactions, 'pet_id');
 
     // Fetch pets' details using pet IDs
-
     $pets = $this->pets->whereIn('pet_id', $petIds)->findAll();
 
     // Fetch medical history for each pet
-
     foreach ($pets as &$pet) {
-        $pet['medical_history'] = $this->medicalHistory->where('pet_id', $pet['pet_id'])->findAll();
+        $pet['medical_history'] = $this->medicalHistory->where('pet_id', $pet['pet_id'])->where('is_correct',1)->findAll();
     }
 
+    // Fetch patient pets owned by the user
+    $patientPets = $this->patientpet->where('owner_user_id', $userId)->findAll();
+
+    // Fetch medical history for each patient pet
+    foreach ($patientPets as &$patientPet) {
+        $patientPet['medical_history'] = $this->medicalHistory->where('patient_pet_id', $patientPet['patient_pet_id'])->findAll();
+        // To unify the structure with the pets, you might want to adjust the keys or structure here
+    }
+
+    // Merge the pets and patientPets arrays, assuming they have a similar structure or have been adjusted to match
+    $allPetsWithHistory = array_merge($pets, $patientPets);
+
     // Return the response
-    return $this->respond($pets);
+    return $this->respond($allPetsWithHistory);
 }
+
 public function messages()
 {
     // Include user id in the announcement data

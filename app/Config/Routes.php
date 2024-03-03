@@ -70,11 +70,18 @@ $routes->group('admin', function($routes) {
     $routes->post('sendMessages', 'AdminController::sendMessages');
     $routes->get('petLocations', 'AdminController::getPetLocations');
     $routes->post('markPetAsRescued', 'AdminController::markAsRescued');
+    $routes->get('PatientPetsMedicalHistory', 'AdminController::getPatientPetsMedicalHistory');
+    $routes->post('addMedicalHistoryforExistingpets', 'AdminController::addMedicalHistoryForExistingPets');
+
 
 });
 
 $routes->group('form', function($routes) {
     $routes->get('pets', 'FormController::getPets'); // Maps /form/pets to FormController::getPets method
+    $routes->get('getClientPets', 'FormController::getClientPets');
+    $routes->get('getClientUsers', 'FormController::getClientUsers');
+
+
 });
 
 

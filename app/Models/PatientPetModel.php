@@ -4,15 +4,15 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class MedicalHistoryModel extends Model
+class PatientPetModel extends Model
 {
-    protected $table            = 'medical_history';
-    protected $primaryKey       = 'id';
+    protected $table            = 'patient_pets';
+    protected $primaryKey       = 'patient_pet_id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['pet_id', 'medical_condition', 'medication', 'dosage', 'vaccination_type', 'vaccination_date', 'next_vaccination_date', 'surgical_procedure', 'weight', 'temperature', 'heart_rate', 'dietary_restrictions', 'behavioral_notes','created_at','is_correct','patient_pet_id'];
+    protected $allowedFields    = ['owner_user_id', 'name', 'age', 'species', 'breed', 'photo', 'created_at', 'updated_at', 'gender'];
 
     protected bool $allowEmptyInserts = false;
 

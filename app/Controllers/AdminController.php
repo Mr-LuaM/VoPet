@@ -32,6 +32,8 @@ class AdminController extends BaseController
     private $messages;
 
     private $petLocations;
+
+    private $patientpet;
     protected $db;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
@@ -42,6 +44,7 @@ class AdminController extends BaseController
         $this->medicalHistory = new \App\Models\MedicalHistoryModel();
         $this->messages = new \App\Models\MessagesModel();
         $this->petLocations = new \App\Models\PetLocationsModel();
+        $this->patientpet = new \App\Models\PatientpetModel();
         $this->db = \Config\Database::connect();
     }
 
@@ -848,19 +851,23 @@ public function deleteAnnouncement()
 
     public function getMedicalHistory()
     {
-        // Initialize models
+
         
-        // Fetch medical history data along with associated pet info
-        // Only fetch records marked as correct
-        $medicalHistory = $this->medicalHistory
-            ->select('medical_history.*, pet.name as pet_name, pet.age, pet.species, pet.breed, pet.photo')
-            ->join('pets as pet', 'pet.pet_id = medical_history.pet_id')
-            ->where('medical_history.is_correct', TRUE) // Add this line to filter by `is_correct`
-            ->orderBy('medical_history.created_at', 'DESC') // Sort by `created_at` in descending order
+        // Query for adopted pets' medical histories including transaction data for owner information
+        $adoptedPetsHistory = $this->medicalHistory
+        ->select('medical_history.*, pets.name as pet_name, pets.age, pets.species, pets.breed, pets.photo, transactions.user_id as owner_id, CONCAT(users.fname, " ", users.lname) AS owner_full_name')
+        ->join('pets', 'pets.pet_id = medical_history.pet_id', 'left')
+            ->join('transactions', 'transactions.pet_id = medical_history.pet_id', 'left')
+            ->join('users', 'users.user_id = transactions.user_id', 'left')
+            ->where('medical_history.is_correct', 1)
+            ->where('medical_history.pet_id IS NOT NULL')
             ->findAll();
+    
         
-        return $this->response->setJSON(['status' => 'success', 'data' => $medicalHistory]);
+    
+    return $this->respond(['status' => 'success', 'data' => $adoptedPetsHistory]);
     }
+    
     public function markTransactionAsNotCorrect()
     {
        (int) $id = $this->request->getVar('id');
@@ -920,32 +927,87 @@ public function addMedicalHistory()
         // Return the fetched messages as a JSON response
         return $this->respond($messages);
     }
-    public function sendMessages()
-    {
-        // Include user id in the announcement data
-        $jwt = $this->request->getHeaderLine('Authorization');
-        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
-        $loggedInUserId = $decoded->sub;
-    
-        // Get the content, sender_id, created_at, and receiver_id from the request body
-        $content = $this->request->getVar('content');
-        $createdAt = $this->request->getVar('created_at');
-        $receiverId = $this->request->getVar('receiver_id');
-    
-        // Insert the message into the database
-        $this->messages->insert([
-            'content' => $content,
-            'sender_id' => $loggedInUserId,
-            'created_at' => $createdAt,
-            'receiver_id' => $receiverId
-        ]);
-    
-        // Optionally, you can return a success message or response
-        return $this->response->setJSON([
+public function sendMessages()
+{
+    // Include user id in the announcement data
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $loggedInUserId = $decoded->sub;
+
+    // Get the content and receiver_id from the request body
+    $content = $this->request->getVar('content');
+    $receiverId = $this->request->getVar('receiver_id');
+
+    // Assume the creation date is handled automatically by the database, or use the current timestamp
+    // $createdAt = date('Y-m-d H:i:s'); // Use this if you need to set created_at manually
+
+    // Insert the message into the database
+    $inserted = $this->messages->insert([
+        'content' => $content,
+        'sender_id' => $loggedInUserId,
+        // 'created_at' => $createdAt, // Uncomment if you're setting created_at manually
+        'receiver_id' => $receiverId
+    ]);
+
+    // Check if message was inserted successfully
+    if ($inserted) {
+        // Send a notification to the receiver
+        $notificationTitle = 'New Message from Vet Clinic';
+        $notificationBody =  $content; // Customize your message content
+        $this->sendPushNotificationToUser($receiverId, $notificationTitle, $notificationBody);
+
+        // Return a success response
+        return $this->respondCreated([
             'success' => true,
             'message' => 'Message sent successfully.'
         ]);
+    } else {
+        // Handle the error case
+        return $this->failServerError('Failed to send message');
     }
+}
+
+
+    public function sendPushNotificationToUser($receiverId, $title, $body)
+{
+    // Fetch the FCM token of the receiver user
+    $user = $this->users->find($receiverId); // Assuming `$this->users` is your user model instance
+    if (empty($user['fcm_token'])) {
+        return 'User does not have a FCM token.';
+    }
+    
+    $token = $user['fcm_token'];
+
+    // Prepare the payload for the push notification
+    $url = 'https://fcm.googleapis.com/fcm/send';
+    $headers = [
+        'Authorization: key=' . $this->firebaseServerKey,
+        'Content-Type: application/json'
+    ];
+
+    $fields = [
+        'to' => $token, // Use 'to' instead of 'registration_ids' for a single recipient
+        'notification' => [
+            'title' => $title,
+            'body' => $body,
+        ]
+    ];
+
+    // Initialize cURL and send the notification
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+    $result = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($result, true);
+}
+
+
+
     public function getPetLocations(){
         
     
@@ -977,6 +1039,75 @@ public function addMedicalHistory()
             return $this->failServerError('Could not update the pet status');
         }
     }
+
+   
+
+    public function getPatientPetsMedicalHistory()
+    {
+        $patientPetsHistory = $this->db->table('medical_history') // Assuming this is the correct way to reference your medical_history model or table
+            ->select('medical_history.*, patient_pets.name as pet_name, patient_pets.age, patient_pets.species, patient_pets.breed, patient_pets.photo, CONCAT(users.fname, " ", users.lname) AS owner_full_name')
+            ->join('patient_pets', 'patient_pets.patient_pet_id = medical_history.patient_pet_id', 'left') // Ensure this join is correct
+            ->join('users', 'users.user_id = patient_pets.owner_user_id', 'left')
+            ->where('medical_history.is_correct', 1)
+            ->where('medical_history.patient_pet_id IS NOT NULL')
+            ->get()->getResultArray();
+    
+        return $this->respond(['status' => 'success', 'data' => $patientPetsHistory]);
+    }
+    
+
+    public function addMedicalHistoryForExistingPets()
+{
+    $json = $this->request->getJSON(true);
+
+    // Initialize your models
+    $patientPetsModel =$this->patientpet;
+    $medicalHistoryModel = $this->medicalHistory;
+
+    if (is_array($json['selectedPetId'])) {
+        // Existing pet
+        $patientPetId = $json['selectedPetId']['pet_id'];
+    } else {
+        // New pet
+        $newPet = [
+            'name' => $json['selectedPetId'], // Assuming 'selectedPetId' is a string for new pets
+            'owner_user_id' => $json['selectedUserId'],
+            // Add other default fields or fields derived from the request
+        ];
+        if (!$patientPetsModel->insert($newPet)) {
+            return $this->fail('Failed to create new pet record');
+        }
+
+        $patientPetId = $patientPetsModel->getInsertID();
+    }
+
+    // Prepare medical history data
+    $medicalHistoryData = [
+        'pet_id' => $json['selectedPetId']['pet_id'] ?? null, // Uncomment if neededyy
+        'patient_pet_id' => $patientPetId,
+        'medical_condition' => $json['medical_condition'],
+        'medication' => $json['medication'],
+        'dosage' => $json['dosage'],
+        'vaccination_type' => $json['vaccination_type'],
+        'vaccination_date' => $json['vaccination_date'],
+        'next_vaccination_date' => $json['next_vaccination_date'],
+        'surgical_procedure' => $json['surgical_procedure'],
+        'weight' => $json['weight'],
+        'temperature' => $json['temperature'],
+        'heart_rate' => $json['heart_rate'],
+        'dietary_restrictions' => $json['dietary_restrictions'],
+        'behavioral_notes' => $json['behavioral_notes'],
+        'is_correct' => 1, // Assuming a default value
+    ];
+
+    if (!$medicalHistoryModel->insert($medicalHistoryData)) {
+        return $this->fail('Failed to add medical history');
+    }
+
+    return $this->respondCreated('Medical history added successfully');
+}
+
+    
 
 
 }
