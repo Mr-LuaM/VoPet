@@ -15,8 +15,14 @@
         <v-toolbar color="secondary">
           <v-toolbar-title>Pet Ture</v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn variant="plain" @click="closeCameraDialog" icon="mdi-close"></v-btn>
+          <v-btn variant="plain" @click="switchCamera" icon>
+            <v-icon>mdi-camera-switch</v-icon>
+          </v-btn>
+          <v-btn variant="plain" @click="closeCameraDialog" icon>
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
         </v-toolbar>
+        
         <div class="text-center font-weight-bold text-caption pt-3 text-primary">{{ locationName }}</div>
         <div class="text-center font-weight-bold text-caption">{{ latitude }}, {{ longitude }}</div>
         <v-card-text align="center" justify="center">
@@ -62,6 +68,9 @@ const photoUrl = ref(null);
 const loading = ref(false);
 const snackbar = ref(null);
 
+const usingRearCamera = ref(false);
+
+
 const openCameraDialog = () => {
   dialog.value = true;
   openCamera();
@@ -72,8 +81,17 @@ const closeCameraDialog = () => {
   closeCamera();
 };
 
+const switchCamera = () => {
+  usingRearCamera.value = !usingRearCamera.value;
+  openCamera();
+};
+
 const openCamera = () => {
-  navigator.mediaDevices.getUserMedia({ video: true })
+  const constraints = {
+    video: { facingMode: usingRearCamera.value ? "environment" : "user" }
+  };
+
+  navigator.mediaDevices.getUserMedia(constraints)
     .then((stream) => {
       const video = videoElement.value;
       video.srcObject = stream;
@@ -83,6 +101,7 @@ const openCamera = () => {
       closeCameraDialog();
     });
 };
+
 
 const closeCamera = () => {
   const video = videoElement.value;
@@ -196,15 +215,24 @@ const locateUser = (map) => {
       latitude.value = e.latlng.lat.toFixed(5);
       longitude.value = e.latlng.lng.toFixed(5);
       fetchNearbyVeterinary(map, e.latlng);
+      
     } catch (error) {
       console.error("Failed to fetch location name:", error);
     }finally {loading.value = false;}
-  });
+  }
+  );
 
   map.on('locationerror', (e) => {
     console.error("Failed to get your location:", e.message);
   });
+  L.Popup.prototype._animateZoom = function (e) {
+  if (!this._map) {
+    return
+  }
+}
 };
+
+
 
 const fetchNearbyVeterinary = async (map, latlng) => {
   const bbox = `${latlng.lat-0.1},${latlng.lng-0.1},${latlng.lat+0.1},${latlng.lng+0.1}`;
