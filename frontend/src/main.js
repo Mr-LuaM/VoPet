@@ -11,7 +11,7 @@ import { useUserStore } from '@/stores/userStore'; // Adjust the path to your st
 
 
 
-axios.defaults.baseURL = "http://localhost:8080/"
+axios.defaults.baseURL = "https://app.chalsim.online/"
 
 setInterval(function checkTokenExpiration() {
   const userStore = useUserStore();

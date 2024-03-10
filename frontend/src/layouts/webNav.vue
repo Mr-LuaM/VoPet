@@ -125,7 +125,7 @@
 
         <template v-slot:append>
           <div class="pa-2">
-            <v-btn @click="this.$router.push('settings');" block variant="flat" class="bg-info">Settings</v-btn>
+            <v-btn @click="goToSettings" block variant="flat" class="bg-info">Settings</v-btn>
           </div>
           <div class="pa-2">
             <v-btn @click="userStore.logout" block variant="flat"  class="bg-error">Logout</v-btn>
@@ -169,7 +169,9 @@
       return segment.charAt(0).toUpperCase() + segment.slice(1);
     });
   };
-  
+  const goToSettings = () => {
+  router.push('settings');
+}
   // Watch for route changes and update breadcrumbs
   watch(route, () => {
     updateBreadcrumbs();
