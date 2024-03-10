@@ -46,6 +46,7 @@ class AuthController extends ResourceController
 
         // Hash password before saving
         $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+        $data['role'] = 'user';
 
          // Generate a 6-digit verification token
     $verificationToken = rand(100000, 999999); // Generates a number between 100000 and 999999
