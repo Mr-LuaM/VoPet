@@ -421,6 +421,12 @@ public function sendMessages()
 }
 
 public function petture(){
+        // Decode the JWT token to get the user ID
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $userId = $decoded->sub;
+
+
     $file = $this->request->getFile('photo');
     $locationName = $this->request->getPost('locationName');
     $latitude = $this->request->getPost('latitude');
@@ -436,6 +442,7 @@ public function petture(){
             'latitude' => $latitude,
             'pet_picture' => $newName, // Save the file name of the uploaded picture
             'address' => $locationName, // Assuming the 'address' field is for the location name
+            'user_id' => $userId, //
         ]);
 
         return $this->respondCreated([
@@ -450,5 +457,28 @@ public function petture(){
     }
 
     return $this->fail('Upload failed', ResponseInterface::HTTP_BAD_REQUEST);
+}
+public function petSavedHistory(){
+    try {
+        // Decode the JWT token to get the user ID
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $userId = $decoded->sub;
+    
+        // Fetch pet saved locations data from the database
+        $petSavedLocations = $this->db->table('petlocations')
+            ->where('petlocations.user_id', $userId)
+            ->select('petlocations.location_id, petlocations.longitude, petlocations.latitude, petlocations.created_at, petlocations.pet_picture, petlocations.address, petlocations.is_rescued')
+            ->orderBy('petlocations.created_at', 'DESC') // Sort by the most recent creation date
+            ->get()
+            ->getResultArray();
+    
+        // Return pet saved locations data as JSON response
+        return $this->respond($petSavedLocations);
+    } catch (Exception $e) {
+        // Handle exceptions (e.g., database errors)
+        return $this->failServerError('An error occurred');
+    }
+    
 }
 }

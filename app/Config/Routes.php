@@ -37,6 +37,8 @@ $routes->group('user', function($routes) {
     $routes->get('messages', 'UserController::messages');
     $routes->post('sendMessages', 'UserController::sendMessages');
     $routes->post('petture', 'UserController::petture');
+    $routes->get('petSavedHistory', 'UserController::petSavedHistory');
+
 
 
 
