@@ -85,7 +85,7 @@
 <div class="pa-3"> <v-divider></v-divider></div>
 
 
-<div class="pa-3">  
+<div class="pa-3 py-0 my-0">  
 
     <router-link :to="{ name: 'adoption-history' }" tag="v-btn" class=" text-decoration-none" >
         <v-btn
@@ -111,6 +111,21 @@
       size="large"
     >
       Pet Medical History
+    </v-btn>
+    </router-link>
+
+
+</div>
+<div class="px-3 py-0 my-0">  
+
+  <router-link :to="{ name: 'pet-saved-history' }" tag="v-btn" class=" text-decoration-none" >
+      <v-btn
+      block
+      class=" mt-2 rounded-pill"
+      color="secondary"
+      size="large"
+    >
+      Pet Saved History
     </v-btn>
     </router-link>
 

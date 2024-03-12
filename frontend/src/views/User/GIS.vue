@@ -57,6 +57,10 @@ import 'leaflet.locatecontrol';
 import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css';
 import axios from 'axios';
 import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
+import { useUserStore } from '@/stores/userStore'; // Adjust the path if necessary
+const userStore = useUserStore();
+
+
 
 const dialog = ref(false);
 const locationName = ref('');
@@ -146,6 +150,8 @@ const takePhoto = async () => {
     const response = await axios.post('user/petture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+        // Correct way to set Authorization header
+        'Authorization': `Bearer ${userStore.token}`
       },
     });
 

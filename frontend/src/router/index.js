@@ -233,6 +233,11 @@ const userEditRoutes = [
         name: 'medical-history',
         component: () => import('../views/User/EditMedicalHistory.vue'),
       },
+      {
+        path: 'petSavedHistory', // Path: /user/edit/adoptionHistory
+        name: 'pet-saved-history',
+        component: () => import('../views/User/EditPetHistory.vue'),
+      },
      
       
     ],
