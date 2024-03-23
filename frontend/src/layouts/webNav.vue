@@ -13,13 +13,22 @@
       </div>  <div class="text-center font-weight-black text-h6  ">Vopet</div>
 
     <v-list density="comfortable" nav>
+      
+  <v-list-item
+  link
+  to="/admin/dashboard"
+  prepend-icon="mdi-view-dashboard-outline"
+>
+  <v-list-item-title>Reports Dashboard</v-list-item-title>
+</v-list-item>
   <v-list-item
     link
-    to="/admin/dashboard"
+    to="/admin/map"
     prepend-icon="mdi-view-dashboard"
   >
-    <v-list-item-title>Dashboard</v-list-item-title>
+    <v-list-item-title>Map Dashboard</v-list-item-title>
   </v-list-item>
+
 
   <!-- Divider -->
   <v-container>
@@ -68,13 +77,13 @@
   </v-list-item>
 
    <!-- History -->
-   <v-list-item
+   <!-- <v-list-item
    link
    to="/admin/medicalHistory"
    prepend-icon="mdi-medical-bag"
  >
    <v-list-item-title>Medical History</v-list-item-title>
- </v-list-item>
+ </v-list-item> -->
 
     <!-- History -->
     <v-list-item
@@ -170,7 +179,7 @@
     });
   };
   const goToSettings = () => {
-  router.push('settings');
+  router.push('/admin/settings');
 }
   // Watch for route changes and update breadcrumbs
   watch(route, () => {

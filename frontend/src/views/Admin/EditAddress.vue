@@ -1,22 +1,22 @@
 <template>
-    <v-card flat >
-        <v-toolbar
-          color="background"
-          extended
-          height="500px"
-          style="height: 130px; outline-bottom: 4px solid #FE7839;"
-          class="rounded-b"
-        >
-        <v-btn
-        icon
-        class="hidden-xs-only mt-3"
-        @click=" router.push({ name: 'profile' });"
-      >
-    
-        <v-icon>mdi-arrow-left</v-icon>
-    </v-btn>
-        <v-toolbar-title class="font-weight-bold mt-3">Edit Address</v-toolbar-title>
-        </v-toolbar>
+  <v-card flat >
+    <v-toolbar
+      color="background"
+      extended
+      height="500px"
+      style="height: 130px; outline-bottom: 4px solid #FE7839;"
+      class="rounded-b"
+    >
+    <v-btn
+    icon
+    class="hidden-xs-only mt-3"
+    @click=" router.push({ name: 'profile' });"
+  >
+
+    <v-icon>mdi-arrow-left</v-icon>
+</v-btn>
+    <v-toolbar-title class="font-weight-bold mt-3">Contact Information</v-toolbar-title>
+    </v-toolbar>
     
         <v-card
     class="mx-auto rounded-circle"
@@ -43,6 +43,32 @@
   
 >
   <v-form validate-on="blur" ref="form"  @submit.prevent="changeaddress"> 
+    <v-row>
+      <v-col cols="4">
+        <v-text-field
+          label="Lot Number"
+          v-model="lotNumber"
+          variant="underlined"
+          :rules="[v => !!v || 'Lot number is required']"
+        ></v-text-field>
+      </v-col>
+      <v-col cols="4">
+        <v-text-field
+          label="House Number"
+          v-model="houseNumber"
+          variant="underlined"
+          :rules="[v => !!v || 'House number is required']"
+        ></v-text-field>
+      </v-col>
+      <v-col cols="4">
+        <v-text-field
+          label="Street Name"
+          v-model="streetName"
+          variant="underlined"
+          :rules="[v => !!v || 'Street name is required']"
+        ></v-text-field>
+      </v-col>
+    </v-row>
     <v-row>
       <v-col cols="12" >
         <v-autocomplete
@@ -123,6 +149,10 @@ const userStore = useUserStore();
 const form = ref(null);
 const snackbar = ref(null);
 const loading = ref(false);
+
+const lotNumber = ref('');
+const houseNumber = ref('');
+const streetName = ref('');
 
 const selectedRegion = ref(null);
 const regions = ref([]);
@@ -219,6 +249,9 @@ const changeaddress = async () => {
         municipality: selectedMunicipality.value,
         barangay: selectedBarangay.value,
         zipcode: selectedZipcode.value,
+        lotNumber: lotNumber.value, // Include lot number
+        houseNumber: houseNumber.value, // Include house number
+        streetName: streetName.value, // Include street name
       };
       loading.value = true;
 

@@ -201,7 +201,7 @@ const getStatusClass = (status) => {
     case 'unclaimed':
       return 'text-warning'; // Yellow for unclaimed
     default:
-      return ''; // Default class if no match
+      return 'text-secondary'; // Default class if no match
   }
 };
 const petsAdopted = ref([]);

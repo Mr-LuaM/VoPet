@@ -63,10 +63,8 @@ export const zipCodeRule = [
 
 // petAge validation rule
 export const petAgeRule = [
-  v => !!v || 'Age is required',
-  v => !isNaN(parseFloat(v)) && isFinite(v) || 'Age must be a number',
-  // Optionally, add a rule for age range, e.g., 0 to 20 years
-  v => (v >= 0 && v <= 20) || 'Age must be between 0 and 20 years', // Adjust range as needed
+  v => /^(?:(\d+y)(\s\d+m)?)|(\d+m)$/.test(v) || 'Age must be in "Xy", "Ym", or "Xy Ym" format, e.g., "1y", "2m", or "1y 2m"'
+
 ];
 
 export const socialmediaLinkRule= [

@@ -56,6 +56,11 @@ const adminRoutes = [
       component: () => import('../views/Admin/Dashboard.vue'),
     },
     {
+      path: 'map',
+      name: 'mapDashboard',
+      component: () => import('../views/Admin/Map.vue'),
+    },
+    {
       path: 'petManagement',
       name: 'petManagement',
       component: () => import('../views/Admin/PetManagement.vue'),

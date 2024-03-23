@@ -10,84 +10,72 @@
       </v-avatar>
     </v-card>
 
-    <v-col cols="12" sm="8" md="4" class="mx-auto pa-0">
-      <v-list :items="items" item-props lines="three">
-        <template v-slot:subtitle="{ subtitle }">
-          <div v-html="subtitle"></div>
-        </template>
+    <v-col cols="12" sm="8" md="4" class="mx-auto ">
 
+      <!-- Loop through grouped announcements -->
+      <div v-for="(announcement, index) in groupedAnnouncements" :key="`announcement-group-${index}`">
+        <!-- Date Subheader -->
+        <v-subheader class="text-caption">
+          {{ announcement.date }}
+        </v-subheader>
+        <!-- Announcement Cards -->
+        
+        <v-card v-for="(item, i) in announcement.items" :key="`item-${i}`" class="mt-3 " variant="flat">
 
-      </v-list>
-    </v-col>
+          <v-card-title>
+            <v-avatar size="40" class="mr-3 mt-2">
+              <v-img :src="item.prependAvatar" alt="Profile Picture"></v-img>
+            </v-avatar>
+            {{ item.title }}
+          </v-card-title>
+          <v-card-subtitle class="text-primary">
+           {{ item.author }}
+          </v-card-subtitle>
+          <v-card-text>
+            <div>{{ item.content }}</div>
+          </v-card-text>
+        </v-card>
+        <!-- Divider except after the last item -->
+        <v-divider inset ></v-divider>
+      </div>
+   </v-col>
   </v-card>
 </template>
+
+
 
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import { useImageUrl } from '@/composables/useImageUrl'; // Ensure the path matches where you've defined this composable
+import { useImageUrl } from '@/composables/useImageUrl';
 
-const items = ref([]);
+const groupedAnnouncements = ref([]);
 
 onMounted(async () => {
   try {
     const response = await axios.get('user/getAnnouncements');
-    let transformedItems = [];
-
-    // Group announcements by date
-    const groupedAnnouncements = groupByDate(response.data.items);
-
-    // Iterate through each group and add a subheader for each date
-    Object.keys(groupedAnnouncements).forEach((date, index, array) => {
-      transformedItems.push({ type: 'subheader', title: formatDate(date) });
-
-      // Add announcements for this date
-      groupedAnnouncements[date].forEach((announcement, announcementIndex, announcementArray) => {
-        const { imageUrl } = useImageUrl(announcement.picture_url);
-
-        // Add announcement item
-        transformedItems.push({
-          title: announcement.title,
-          subtitle: `<span class="text-primary">${announcement.fname} ${announcement.lname}</span> &mdash; ${announcement.content}`,
-          prependAvatar: imageUrl,
-        });
-
-        // Add a divider after each announcement except the last one in each group
-        if (announcementIndex < announcementArray.length - 1) {
-          transformedItems.push({ type: 'divider', inset: true });
-        }
-      });
-
-      // Optionally, add a divider between dates except after the last date group
-      if (index < array.length - 1) {
-        transformedItems.push({ type: 'divider' });
-      }
-    });
-
-    items.value = transformedItems;
+    groupedAnnouncements.value = transformAndGroupAnnouncements(response.data.items);
   } catch (error) {
     console.error('Error fetching announcements:', error);
   }
 });
 
+function transformAndGroupAnnouncements(items) {
+  // Group by date and map data
+  const grouped = items.reduce((acc, item) => {
+    const date = new Date(item.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    if (!acc[date]) acc[date] = [];
+    acc[date].push({
+      title: item.title,
+      content: item.content,
+      author: `${item.fname} ${item.lname}`,
+      prependAvatar: useImageUrl(item.picture_url).imageUrl,
+    });
+    return acc;
+  }, {});
 
-// Function to group announcements by date
-function groupByDate(announcements) {
-  const grouped = {};
-  announcements.forEach(announcement => {
-    const date = new Date(announcement.created_at).toDateString();
-    if (!grouped[date]) {
-      grouped[date] = [];
-    }
-    grouped[date].push(announcement);
-  });
-  return grouped;
-}
-
-// Function to format date in a more human-readable format
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // Transform into an array suitable for v-for
+  return Object.entries(grouped).map(([date, items]) => ({ date, items }));
 }
 </script>

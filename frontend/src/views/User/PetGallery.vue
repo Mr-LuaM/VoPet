@@ -63,8 +63,10 @@
                 <div class="text-caption font-weight-medium text-grey">Age: {{ pet.age }}</div>
                 <div class="text-caption font-weight-medium text-grey">Species: {{ pet.species }}</div>
                 <div class="text-caption font-weight-medium text-grey">Breed: {{ pet.breed }}</div>
+                <div class="text-caption font-weight-medium text-grey">Color: {{ pet.color }}</div>
+
                 <div class="text-caption font-weight-medium text-grey">Status: {{ pet.status }}</div>
-                <div class="text-caption font-weight-medium text-grey">Info: {{ pet.info }}</div>
+                <div class="text-caption font-weight-medium text-grey">Info: {{ pet.distinguishing_marks }}</div>
                 <div class="text-caption font-weight-medium text-grey">Rescued At: {{ pet.created_at }}</div>
               </v-card-text>
             </v-carousel-item>

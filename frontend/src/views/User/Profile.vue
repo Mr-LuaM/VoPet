@@ -94,14 +94,14 @@
         color="secondary"
         size="large"
       >
-        Adoption History
+        Adoption Information & History
       </v-btn>
       </router-link>
 
 
 </div>
 
-<div class="px-3 py-0 my-0">  
+<!-- <div class="px-3 py-0 my-0">  
 
   <router-link :to="{ name: 'medical-history' }" tag="v-btn" class=" text-decoration-none" >
       <v-btn
@@ -115,7 +115,7 @@
     </router-link>
 
 
-</div>
+</div> -->
 <div class="px-3 py-0 my-0">  
 
   <router-link :to="{ name: 'pet-saved-history' }" tag="v-btn" class=" text-decoration-none" >

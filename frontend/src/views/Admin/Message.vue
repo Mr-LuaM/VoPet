@@ -43,7 +43,7 @@
               </div>
             </v-card-text>
             <v-card-actions class="pa-4">
-              <v-text-field v-model="newMessage" label="Type a message" variant="underlined"  hide-details class="flex-grow-1" @keyup.enter="sendMessage" autofocus ></v-text-field>
+              <v-text-field v-model="newMessage" label="Type a message" variant="underlined"   class="flex-grow-1" @keyup.enter="sendMessage" autofocus persistent-hint hint="type '@generate adoption Agreement' to generate adoption agreement and send to email" ></v-text-field>
               <v-btn color="primary" @click="sendMessage" :disabled="!newMessage.trim()" :loading="loading">Send</v-btn>
               
             </v-card-actions>

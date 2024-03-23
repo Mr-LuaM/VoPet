@@ -108,12 +108,13 @@
                 
                 <v-col cols="6">
                   <v-text-field
-                    v-model="petAge"
-                    label="Age"
-                    variant="underlined"
-                    :rules="petAgeRule"
-
-                  ></v-text-field>
+                  v-model="petAge"
+                  label="Age"
+                  variant="underlined"
+                  :rules="petAgeRule" 
+                  hint="e.g., 1y 2m for 1 year and 2 months"
+                  persistent-hint
+                ></v-text-field>
                 </v-col>
                 <v-col cols="6">
                   <v-autocomplete
@@ -129,30 +130,70 @@
               
               <v-row>
                 <v-col cols="6">
-                  <v-text-field
-                    v-model="petSpecies"
-                    label="Species" 
-                    variant="underlined"
-                    :rules="[v => !!v || 'Species is required']"
-                  ></v-text-field>
+                  <v-combobox
+        v-model="petSpecies"
+        :items="['Cat', 'Dog']"
+        label="Species"
+        variant="underlined"
+        :rules="[v => !!v || 'Species is required']"
+        hint="Select from the list or type if not found"
+        persistent-hint
+
+      ></v-combobox>
                 </v-col>
                 <v-col cols="6">
+                  <v-combobox
+        v-model="petBreed"
+        :items="breedOptions"
+        label="Breed"
+        variant="underlined"
+        :rules="[v => !!v || 'Breed is required']"
+        hint="Select from the list or type if not found"
+        persistent-hint
+        :disabled="!petSpecies || petSpecies === 'Other'"
+      ></v-combobox>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12">
                   <v-text-field
-                    v-model="petBreed"
-                    label="Breed"
+                    v-model="petColor" 
+                    label="Color"
                     variant="underlined"
+                    :rules="[v => !!v || 'Color is required']"
                   ></v-text-field>
                 </v-col>
               </v-row>
-              
-              <v-textarea 
-                v-model="petInfo"
-                label="Info"
-                variant="underlined"
-                :rules="[v => !!v || 'Info is required']"
-                multiline
-                rows="3"
-              ></v-textarea>
+              <v-row> <v-col cols="12">
+              <v-textarea
+              v-model="petDistinguishingMarks"
+              label="Distinguishing Marks"
+              variant="underlined"
+              :rules="[v => !!v || 'Distinguishing marks are required']"
+              multi-line
+              rows="3"
+            ></v-textarea>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12">
+ 
+   <v-autocomplete
+   v-model="selectedClinic"
+   :items="clinics"
+   item-title="name"
+   item-value="name"
+   label="Select Clinic"
+   return-object
+   :disabled="clinics.length === 0 || loading"
+   variant="underlined"
+   hint="Null if global pet"
+   persistent-hint
+ ></v-autocomplete>
+ 
+ 
+</v-col>
+</v-row>
 
               <v-btn
                 block
@@ -183,58 +224,139 @@
   </template>
   
   <script setup>
-  import { ref, onMounted, watch } from 'vue'
-  import axios from 'axios'
-  import { useUserStore } from '@/stores/userStore'
-  import { baseUrl } from '@/config/config.js';
-  import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
-  import ConfirmationDialog from '@/components/dialogs/confirmationDialog.vue';
-
+  import { ref, watch, onMounted } from 'vue';
+  import axios from 'axios';
+  import { useUserStore } from '@/stores/userStore';
   import {  
   nameRule, profileRule, petAgeRule
    } from '@/composables/validationRules'; // Directly import the rule
    
-   const form = ref(null);
-   const snackbar = ref(null);
-   const loading = ref(false);
+  import { baseUrl } from '@/config/config.js';
+  import DynamicSnackbar from '@/components/snackbars/dynamicSnack.vue';
+  import ConfirmationDialog from '@/components/dialogs/confirmationDialog.vue';
+  
+  const userStore = useUserStore();
+  const dialog = ref(false);
+  const loading = ref(false);
+  const form = ref(null);
+  
+  
+  // Pet attributes
+  const petName = ref('');
+  const petAge = ref('');
+  const petGender = ref(null);
+  const petSpecies = ref(null);
+  const petBreed = ref('');
+  const petColor = ref(''); // Correctly added color field
+  const petDistinguishingMarks = ref(''); // Updated field
+  const petImg = ref(null);
+  const petId = ref('');
+  
+  // Dynamic breed options
+  const breedOptions = ref([]);
+  const dogBreeds = ['Labrador Retriever', 'German Shepherd', 'Golden Retriever'];
+  const catBreeds = ['Persian', 'Maine Coon', 'Siamese'];
+  
+  // UI and Dialogs
+  const dialogTitle = ref('Add New Pet');
+  const snackbar = ref(null); // For displaying messages
+  const confirmationDialog = ref(null); // For confirming actions like archive
+  const currentPet = ref(null); // For operations like archiving
+  const isEditMode = ref(false);
+  const clinics = ref([]);
 
-const petName = ref('');
-const petAge = ref('');
-const petGender = ref(null);
-const petSpecies = ref(null);
-const petBreed = ref('');
-const petInfo = ref('');
-const petImg = ref(null);
-const petId = ref('');
 
-const isEditMode = ref(false);
+const selectedClinic = ref('');
+
+async function fetchClinics() {
+  loading.value = true;
+  try {
+    const response = await axios.get('/form/clinics');
+    // Assuming the response.data.data directly contains the array of clinics
+    clinics.value = response.data.data; // Update clinics with actual data
+  } catch (error) {
+    console.error('Error fetching clinics:', error);
+    clinics.value = []; // Keep or reset to empty array on error
+  } finally {
+    loading.value = false;
+  }
+}
 
 
-const dialogTitle = ref('Add New Pet');
-  const dialog = ref(false)
-  const userStore = useUserStore()
+
+
+ 
+  // Data and Methods for Handling Pets
+  const pets = ref([]);
   const search = ref('')
   const headers = [
-    { title: 'PID', value: 'pet_id', sortable: true, },
-
-  { title: 'Photo', value: 'photo', sortable: false, },
-  { title: 'Name', value: 'name', sortable: true, },
+  { title: 'PID', value: 'pet_id', sortable: true },
+  { title: 'Photo', value: 'photo', sortable: false },
+  { title: 'Name', value: 'name', sortable: true },
   { title: 'Age', value: 'age', sortable: true },
   { title: 'Species', value: 'species', sortable: true },
   { title: 'Breed', value: 'breed', sortable: true },
+  { title: 'Color', value: 'color', sortable: true }, // Added color
+  { title: 'Distinguishing Marks', value: 'distinguishing_marks', sortable: false }, // Added distinguishing_marks
   { title: 'Gender', value: 'gender', sortable: true },
   { title: 'Status', value: 'status', sortable: true },
+  { title: 'Clinic Name', value: 'clinic_name', sortable: true },
   { title: 'Action', value: 'actions', sortable: false },
 ];
 
-  const pets = ref([])
+  // Initialization and Utility Methods
+  onMounted(() => {
+  getPets();
+  fetchClinics();
+});
+  
+  watch(petSpecies, (newSpecies) => {
+    if (newSpecies === 'Dog') {
+      breedOptions.value = dogBreeds;
+    } else if (newSpecies === 'Cat') {
+      breedOptions.value = catBreeds;
+    } else {
+      breedOptions.value = [];
+    }
+    petBreed.value = null; // Reset breed when species changes
+  });
+  
 
 
-  const confirmationDialog = ref(null); // Define a ref for the confirmation dialog
-    const currentPet = ref(null); // Define a ref to store the current pet to be archived
     const dialog2Title = ref('Confirm Archive');
     const dialogMessage = ref('Are you sure you want to archive this pet?');
     const color = ref('warning');
+
+    function editPet(pet) {
+    // Populate form fields with selected pet's details
+    petName.value = pet.name;
+    petAge.value = pet.age; // Consider the format of age (e.g., "1y 3m")
+    petSpecies.value = pet.species;
+    petBreed.value = pet.breed;
+    petColor.value = pet.color; // Assuming you have a default or empty state for color
+    petGender.value = pet.gender;
+    petDistinguishingMarks.value = pet.distinguishing_marks || ''; // Use distinguishing marks instead of info
+    petId.value = pet.pet_id;
+
+    // Handle the pet image separately if necessary
+    // petImg.value should be managed according to how you handle file inputs in Vue
+    // For example, you might want to show the current image and replace it if a new one is uploaded
+
+    isEditMode.value = true;
+    dialogTitle.value = 'Edit Pet Details';
+    dialog.value = true; // Open the dialog
+}
+
+
+
+function openAddPetDialog() {
+    resetFormFields();
+    dialog.value = true; // Open the dialog for a new pet
+    dialogTitle.value = 'Add New Pet';
+    isEditMode.value = false;
+}
+
+
 
     const showArchiveDialog = (petId) => {
   // Find the pet with the provided petId
@@ -258,106 +380,55 @@ const handleConfirm = async () => {
     console.error('Pet ID is missing');
   }
 };
-
-
-    const handleCancel = () => {
+const handleCancel = () => {
       // Reset currentPet if the user cancels
       currentPet.value = null;
     };
 
-
-  function editPet(pet) {
-  // Populate form fields with selected pet's details
-  petName.value = pet.name;
-  petAge.value = pet.age;
-  petSpecies.value = pet.species;
-  petBreed.value = pet.breed;
-  petGender.value = pet.gender;
-  petInfo.value = pet.info;
-  petId.value = pet.pet_id;
-  // Assuming petImg is handled separately, as files cannot be directly assigned
-
-  isEditMode.value = true;
-  dialogTitle.value = 'Edit Pet Details';
-  dialog.value = true; // Open the dialog
-}
-
-function openAddPetDialog() {
-    resetFormFields(); // Clear any existing form data
-  dialog.value = true; // Open the dialog
-}
-
-
-const addOrUpdatePet = async () => {
-  if (await form.value.validate()) {
+  // Pet Operations: Add, Update, Fetch, and Archive
+  async function addOrUpdatePet() {
+    const { valid } = await form.value.validate();
+  if (valid) {
     loading.value = true;
-
+   
+  
     const formData = new FormData();
     formData.append('name', petName.value);
     formData.append('age', petAge.value);
     formData.append('species', petSpecies.value);
     formData.append('breed', petBreed.value);
+    formData.append('color', petColor.value);
     formData.append('gender', petGender.value);
-    formData.append('info', petInfo.value);
-    if (petImg.value) {
-      formData.append('photo', petImg.value[0]); // Append the file to FormData
-    }
 
-    // Include petId if editing
+  const clinicId = parseInt(selectedClinic.value.id, 10); // Convert to integer
+  formData.append('clinic_id', clinicId);
+
+    formData.append('distinguishing_marks', petDistinguishingMarks.value);
+    if (petImg.value) {
+      formData.append('photo', petImg.value[0]);
+    }
     if (petId.value) {
       formData.append('pet_id', petId.value);
     }
-
-    const config = {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    };
-
+  
     try {
-      let response;
-      // Determine if adding a new pet or updating an existing one
-      if (petId.value) {
-        response = await axios.post(`/admin/updatePet`, formData, config);
-      } else {
-        response = await axios.post('/admin/addPet', formData, config);
-      }
-
-      if (response.status === 201 || response.status === 200) {
-        const successMessage = petId.value ? 'Pet updated successfully' : 'Pet added successfully';
-        snackbar.value?.openSnackbar(successMessage, 'success');
-        await getPets();
-        dialog.value = false;
-        resetFormFields();
-      }
+      const response = petId.value ?
+        await axios.post(`/admin/updatePet`, formData) :
+        await axios.post(`/admin/addPet`, formData);
+  
+      const successMessage = petId.value ? 'Pet updated successfully' : 'Pet added successfully';
+       snackbar.value?.openSnackbar(successMessage, 'success');
+      dialog.value = false;
+      resetFormFields();
+      getPets();
     } catch (error) {
-      let errorMessage = 'An unknown error occurred. Please try again.';
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
-      }
-      snackbar.value?.openSnackbar(errorMessage, 'error');
+      const errorMessage = error.response?.data?.message || 'An unknown error occurred. Please try again.';
+       snackbar.value?.openSnackbar(errorMessage, 'error');
     } finally {
       loading.value = false;
     }
   }
-};
-
-
-
-  
-  const getPets = async () => {
-    try {
-      const response = await axios.get('/admin/pets');
-  
-      // Adjust this path if your pet data is nested within the response object
-      pets.value = response.data.map((pet) => ({
-        // Spread the rest of the pet's attributes
-        ...pet,
-      }));
-    } catch (error) {
-      console.error('Failed to fetch pets:', error);
-      // Optionally, handle error states (e.g., updating UI or showing an error message)
-    }
-};
-
+  }
   const getColor = (status) => {
   if (status === 'active') {
     return 'green';
@@ -369,12 +440,15 @@ const addOrUpdatePet = async () => {
     return 'grey'; // A default color if the status is something else
   }
 };
-  onMounted(getPets); // Simplified
-
-  
-
-
-
+  async function getPets() {
+    try {
+      const response = await axios.get(`/admin/pets`);
+      pets.value = response.data;
+    } catch (error) {
+      console.error('Failed to fetch pets:', error);
+       snackbar.value?.openSnackbar('Failed to load pets.', 'error');
+    }
+  }
   const archivePet = async (petId) => {
   try {
     const response = await axios.post(`/admin/archivePet`, { pet_id: petId });
@@ -389,20 +463,20 @@ const addOrUpdatePet = async () => {
     snackbar.value?.openSnackbar('Failed to archive pet. Please try again.', 'error');
   }
 };
-
-
- // Function to reset form fields
 function resetFormFields() {
   petName.value = '';
   petAge.value = '';
   petSpecies.value = null;
   petBreed.value = '';
   petGender.value = null;
-  petInfo.value = '';
-  petImg.value = null;
-  petId.value = ''; 
-  isEditMode.value = false;
-  dialogTitle.value = 'Add New Pet'; // Assuming this resets the file input, might need additional handling based on your UI
-} 
+  petDistinguishingMarks.value = ''; // Clear distinguishing marks
+  petColor.value = ''; // Clear color
+  petImg.value = null; // Handle as needed for your UI
+  petId.value = ''; // Clear pet ID
+  selectedClinic.value = ''; // Clear clinic name
+}
+
+  
+  // Methods related to edit and archive operations here
   </script>
   

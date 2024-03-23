@@ -63,7 +63,32 @@
       
     </v-data-table>
     
-
+    <v-dialog v-model="dialog1" max-width="500px">
+      <v-card>
+        <v-toolbar color="error">
+          <v-card-title >Reject Transaction</v-card-title>
+      </v-toolbar>
+        <v-card-text>
+          Are you sure you want to approve this transaction ?
+          <v-form class="mt-5">
+            <v-textarea
+              v-model="rejectReason"
+              label="Reason for Rejection"
+              rows="3"
+              auto-grow
+              required
+              variant="outlined"
+            ></v-textarea>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="dialog1 = false">Cancel</v-btn>
+          <v-btn color="red" text @click="rejectTransaction">Reject</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
     
 
     <ConfirmationDialog ref="confirmationDialog" :title="dialogTitle" :message="dialogMessage" :color="color" @confirm="handleConfirm" @cancel="handleCancel" />
@@ -95,6 +120,9 @@ const dialogMessage = ref('');
 const color = ref('');
 const currentTransaction = ref(null);
 const currentAction = ref('');
+
+const dialog1 = ref(false);
+const rejectReason = ref('');
 
 
   const userStore = useUserStore()
@@ -256,34 +284,41 @@ const showRejectDialog = (transactionId) => {
   const transaction = transactions.value.find(t => t.transaction_id === transactionId);
   if (transaction) {
     currentTransaction.value = transaction;
-    currentAction.value = 'reject';
-    dialogTitle.value = "Reject Transaction";
-    dialogMessage.value = `Are you sure you want to reject the transaction for ${currentTransaction.value.pet_name}?`;
-    color.value = 'error';
-    confirmationDialog.value.openDialog();
+    rejectReason.value = ''; // Reset the reason for new input
+    dialog1.value = true; // Open the reject dialog
+    console.log(currentTransaction);
   }
 };
 
 
-const rejectTransaction = async (transactionId) => {
+
+
+const rejectTransaction = async () => {
+  // Ensure you have a transaction ID to work with
+  if (!currentTransaction.value.transaction_id) return;
+
   try {
-    const payload = { transaction_id: transactionId, status: 'rejected' };
+    const payload = {
+      transaction_id: currentTransaction.value.transaction_id,
+      status: 'rejected', // Assuming this is the status you use
+      reason: rejectReason.value, // Include the reason in your payload
+    };
+
     const response = await axios.post(`/admin/rejectTransaction`, payload, {
       headers: { Authorization: `Bearer ${userStore.token}` }
     });
 
     if (response.status === 200) {
       snackbar.value?.openSnackbar('Transaction rejected successfully', 'error');
-      await getTransactions();
-    } 
-  } catch (error) {
-    let errorMessage = 'An unknown error occurred. Please try again.';
-    if (error.response && error.response.data && error.response.data.message) {
-      errorMessage = error.response.data.message;
+      await getTransactions(); // Refresh the list
+      dialog1.value = false; // Close the dialog
     }
-    snackbar.value?.openSnackbar(errorMessage, 'error');
+  } catch (error) {
+    console.error('Error rejecting transaction:', error);
+    snackbar.value?.openSnackbar('Failed to reject transaction.', 'error');
   }
 };
+
 
   </script>
   
