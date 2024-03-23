@@ -17,10 +17,13 @@ class FormController extends ResourceController
 {
     private$pets;
     private $patientpet;
+
+    private $clinics;
     protected $db;
     public function __construct(){   
         $this->pets = new \App\Models\PetModel();
         $this->patientpet = new \App\Models\PatientpetModel();
+        $this->clinics = new \App\Models\ClinicDetails();
         $this->db = \Config\Database::connect();
     }
     public function getPets()
@@ -68,7 +71,32 @@ public function getClientUsers()
         'data' => $users
     ]);
 }
+public function clinics(){
+    try {
+        $clinics = $this->clinics->findAll(); // Fetch all clinics, adjust based on your needs
 
+        // Format data for response
+        $data = array_map(function ($clinic) {
+            return [
+                'id' => $clinic['clinic_id'], // Adjust based on your column name
+                'name' => $clinic['clinic_name'], // Adjust based on your column name
+            ];
+        }, $clinics);
+
+        return $this->respond([
+            'status' => 200,
+            'error' => null,
+            'data' => $data
+        ]);
+    } catch (\Exception $e) {
+        // Handle potential errors
+        return $this->respond([
+            'status' => 500,
+            'error' => 'Failed to fetch clinics: ' . $e->getMessage(),
+            'data' => []
+        ]);
+    }
+}
 
     
 

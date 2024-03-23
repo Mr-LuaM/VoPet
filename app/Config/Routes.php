@@ -48,6 +48,9 @@ $routes->group('admin', function($routes) {
     $routes->post('addUser', 'AdminController::addUser');
     $routes->post('updateUserRole', 'AdminController::updateUserRole');
     $routes->post('removeUserAccount', 'AdminController::removeUserAccount');
+    $routes->post('addNewClinic', 'AdminController::addNewClinic');
+
+  
     $routes->get('pets', 'AdminController::getPets');
     $routes->post('addPet', 'AdminController::addPet');
     $routes->post('updatePet', 'AdminController::updatePet');
@@ -82,10 +85,16 @@ $routes->group('form', function($routes) {
     $routes->get('pets', 'FormController::getPets'); // Maps /form/pets to FormController::getPets method
     $routes->get('getClientPets', 'FormController::getClientPets');
     $routes->get('getClientUsers', 'FormController::getClientUsers');
+    $routes->get('clinics', 'FormController::clinics');
+
 
 
 });
+$routes->group('api', function($routes) {
+    $routes->get('monthlyAdoptions', 'ApiController::monthlyAdoptions'); // Maps /form/pets to FormController::getPets method
+    $routes->get('monthlyRescues', 'ApiController::monthlyRescues'); // Maps /form/pets to FormController::getPets method
 
+});
 
 
 $routes->get('test', 'AuthController::test');

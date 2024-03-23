@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-
+use PHPMailer\PHPMailer\PHPMailer;
 use CodeIgniter\RESTful\ResourceController;
 use CodeIgniter\HTTP\Request;
 use CodeIgniter\API\ResponseTrait;
@@ -35,6 +35,8 @@ class AdminController extends BaseController
 
     private $patientpet;
     protected $db;
+
+    protected $clinic;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
         $this->announcements = new \App\Models\AnnouncementModel();
@@ -45,6 +47,7 @@ class AdminController extends BaseController
         $this->messages = new \App\Models\MessagesModel();
         $this->petLocations = new \App\Models\PetLocationsModel();
         $this->patientpet = new \App\Models\PatientpetModel();
+        $this->clinic = new \App\Models\ClinicDetails();
         $this->db = \Config\Database::connect();
     }
 
@@ -63,9 +66,12 @@ class AdminController extends BaseController
             // Check if the user has the admin role
             if ($role === 'admin') {
                 // Get users with only the necessary details for user management, excluding the current user
-                $users = $this->users->select('user_id, email, role, fname, lname, status, last_login_at, last_login_ip, picture_url')
-                                     ->where('user_id !=', $userId) // Exclude the user making the request
-                                     ->findAll();
+                $users = $this->db->table('users as u')
+                ->select('u.user_id, u.email, u.role, u.fname, u.lname, u.status, u.last_login_at, u.last_login_ip, u.picture_url, c.clinic_id, c.clinic_name, c.created_at AS clinic_created_at, c.updated_at AS clinic_updated_at')
+                ->join('clinic_details as c', 'u.user_id = c.user_id', 'left')
+                ->get()
+                ->getResult();
+
     
                 // Respond with the users data
                 return $this->respond([
@@ -195,62 +201,85 @@ public function addUser(){
         }
     }
     public function getPets()
-{
+    {
+        // Ensure you correctly adjust field names based on your actual database schema.
+        $recentPets = $this->pets
+            ->select('
+                pets.pet_id,
+                pets.name,
+                pets.age,
+                pets.species,
+                pets.breed,
+                pets.color,
+                pets.status,
+                pets.distinguishing_marks,
+                pets.photo,
+                pets.created_at,
+                pets.updated_at,
+                pets.gender,
+                pets.clinic_id,
+                clinic_details.clinic_name,
+                clinic_details.clinic_id as clinic_detail_id') // Renamed to avoid column name conflict
+            ->join('clinic_details', 'clinic_details.clinic_id = pets.clinic_id', 'left') // Correct join condition based on your schema
+            ->where('pets.status', 'available')
+            ->orderBy('pets.created_at', 'desc')
+           // Correct method to limit the result set to the 4 most recent pets
+            ->findAll(); // Use findAll with the limit instead of get()->getResult();
+    
+        return $this->respond($recentPets);
+    }
+    
 
-    $recentPets = $this->pets
-    ->where('status', 'available')
-    ->orderBy('created_at', 'desc')
-    ->findAll(4); // Limit to the most recent 10 available pets
-
-return $this->respond($recentPets);
-}
 public function addPet()
 {
-    helper(['form', 'url']); // Load form and URL helpers if not already loaded
+    helper(['form', 'url']);
 
-    // Set up basic validation for text inputs
+    // Adjust the validation for 'age' to accommodate '1y 3m' format and add 'color'
     $inputValidation = $this->validate([
         'name' => 'required',
-        'age' => 'required|numeric',
+        'age' => 'required', // Adjusted, consider custom validation if needed
         'species' => 'required',
         'breed' => 'required',
+        'color' => 'required', // Added color validation
         'gender' => 'required',
-        'info' => 'required',
+        'distinguishing_marks' => 'required',
+        'clinic_id' => 'permit_empty', // Adjusted from 'info' to 'distinguishing_marks'
         'photo' => [
             'uploaded[photo]',
             'mime_in[photo,image/jpg,image/jpeg,image/gif,image/png]',
-            'max_size[photo,4096]', // Example size limit: 4MB
+            'max_size[photo,4096]',
         ],
     ]);
 
-    // Check if validation passed
     if (!$inputValidation) {
         return $this->fail($this->validator->getErrors());
     }
 
-    // Process and move the uploaded file
     $file = $this->request->getFile('photo');
     if ($file && $file->isValid() && !$file->hasMoved()) {
-        $newName = $file->getRandomName(); // Generate a new, random filename
-        $file->move(ROOTPATH . 'public/uploads/pets', $newName); // Move the file to the server
-        $photoPath = '/uploads/pets/' . $newName; // Construct the path for storing in the database
+        $newName = $file->getRandomName();
+        $file->move(ROOTPATH . 'public/uploads/pets', $newName);
+        $photoPath = '/uploads/pets/' . $newName;
     } else {
         return $this->fail('Invalid photo upload');
     }
-
-    // Prepare data for insertion, including the path of the uploaded photo
+    $clinicId = $this->request->getVar('clinic_id');
+    // Check if clinicId is not a number or if it's empty, then set it to null
+    $clinicId = is_numeric($clinicId) ? $clinicId : null;
+    // Include 'color' and use 'distinguishing_marks'
     $data = [
         'name' => $this->request->getVar('name'),
         'age' => $this->request->getVar('age'),
         'species' => $this->request->getVar('species'),
         'breed' => $this->request->getVar('breed'),
+        'color' => $this->request->getVar('color'), // Added color
         'gender' => $this->request->getVar('gender'),
-        'info' => $this->request->getVar('info'),
+        'distinguishing_marks' => $this->request->getVar('distinguishing_marks'), // Updated
         'photo' => $newName, // Use the stored path
-        'status' => 'available', // Example status
-    ];
+        'status' => 'available',
+        'clinic_id' => $clinicId, // Set clinic_id based on the check
+        ];
 
-    // Attempt to insert the data into the database
     if ($this->pets->insert($data)) {
         return $this->respondCreated(['message' => 'Pet added successfully'], 201);
     } else {
@@ -258,26 +287,28 @@ public function addPet()
     }
 }
 
+
 public function updatePet()
 {
     helper(['form', 'url']);
 
-
     $rules = [
         'name' => 'required',
-        'age' => 'required|numeric',
+        'age' => 'required', // Consider custom validation rule for "1y 3m" format
         'species' => 'required',
         'breed' => 'required',
+        'color' => 'required', // Added color validation
         'gender' => 'required',
-        'info' => 'required',
-        // Conditional validation for 'photo'
+        'distinguishing_marks' => 'required', 
+        'clinic_id' => 'permit_empty', // Adjusted from 'info' to 'distinguishing_marks'
+        // Updated from 'info' to 'distinguishing_marks'
+        // Consider conditional validation for 'photo' if needed
     ];
 
     if (!$this->validate($rules)) {
         return $this->fail($this->validator->getErrors());
     }
 
-    // Retrieving pet ID from the POST data
     $petId = $this->request->getPost('pet_id');
     if (!$petId) {
         return $this->fail('Pet ID is required for update', 400);
@@ -296,13 +327,15 @@ public function updatePet()
         'age' => $this->request->getPost('age'),
         'species' => $this->request->getPost('species'),
         'breed' => $this->request->getPost('breed'),
+        'color' => $this->request->getPost('color'), // Added color
         'gender' => $this->request->getPost('gender'),
-        'info' => $this->request->getPost('info'),
+        'distinguishing_marks' => $this->request->getPost('distinguishing_marks'), // Updated
+        'clinic_id' => $this->request->getVar('clinic_id') ?: null,
+
     ];
 
-    // Only update photo if a new one was uploaded
     if ($photoPath !== null) {
-        $dataToUpdate['photo'] = $newName;
+        $dataToUpdate['photo'] = $newName; // Use path for consistency
     }
 
     if ($this->pets->update($petId, $dataToUpdate)) {
@@ -311,6 +344,7 @@ public function updatePet()
         return $this->failServerError('Failed to update pet details');
     }
 }
+
 
 public function archivePet()
 {
@@ -334,16 +368,15 @@ public function archivePet()
 
 public function getTransactions()
 {
-
     try {
         $transactions = $this->transactions
-        ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
-                  pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.status AS pet_status, pets.info, pets.photo, pets.gender,
-                  users.fname, users.lname, users.email, users.contact_number, users.picture_url')
-        ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
-        ->join('users', 'users.user_id = transactions.user_id', 'left')
-        ->where('transactions.status', 'requested') // Ensure the status is correctly quoted if it's a string
-        ->findAll();
+            ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
+                      pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.status AS pet_status, pets.distinguishing_marks, pets.color, pets.photo, pets.gender,
+                      users.fname, users.lname, users.email, users.contact_number, users.picture_url')
+            ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
+            ->join('users', 'users.user_id = transactions.user_id', 'left')
+            ->where('transactions.status', 'requested')
+            ->findAll();
     
         return $this->respond([
             'status' => 200,
@@ -351,7 +384,6 @@ public function getTransactions()
             'data' => $transactions
         ]);
     } catch (Exception $e) {
-        // Handle exceptions
         return $this->respond([
             'status' => 500,
             'error' => $e->getMessage(),
@@ -360,13 +392,13 @@ public function getTransactions()
     }
 }
 
+
 public function approveTransaction()
 {
     $db = \Config\Database::connect(); // Get the database connection instance
 
     try {
         $json = $this->request->getJSON();
-        // Convert transaction_id to int
         $transactionId = isset($json->transaction_id) ? (int)$json->transaction_id : 0;
         $status = $json->status ?? '';
 
@@ -374,17 +406,13 @@ public function approveTransaction()
         $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
         $loggedInUserId = $decoded->sub;
 
-
-        // Start transaction
         $db->transStart();
 
-        // Retrieve the transaction to get the associated pet ID
         $transaction = $this->transactions->find($transactionId);
         if (!$transaction) {
             return $this->failNotFound('Transaction not found');
         }
 
-        // Update the transaction status to "approved"
         $this->transactions->update($transactionId, ['status' => $status]);
 
         $pet = $this->pets->find($transaction['pet_id']);
@@ -392,41 +420,46 @@ public function approveTransaction()
             return $this->failNotFound('Pet not found');
         }
 
+        $receiverId = $transaction['user_id'];
+        // Assuming 'users' is a model or a way to access user data
+        $receiver = $this->users->find($receiverId);
 
-        $receiverId =  $transaction['user_id'];
         $messageData = [
             'sender_id' => $loggedInUserId,
             'receiver_id' => $receiverId,
-            'content' => 'Adoption approved for pet ID: ' . $pet['pet_id'] . ' named '. $pet['name'] ,
+            'content' => 'Adoption approved for pet ID: ' . $pet['pet_id'] . ' named ' . $pet['name'],
         ];
         $this->messages->insert($messageData);
 
         $messageData = [
             'sender_id' => $loggedInUserId,
             'receiver_id' => $receiverId,
-            'content' => 'Please visit our till next week to claim' ,
+            'content' => 'Please visit our office next week to claim',
         ];
         $this->messages->insert($messageData);
 
-
-
-        // Complete the transaction
         $db->transComplete();
 
         if ($db->transStatus() === false) {
-            // Transaction failed
             throw new \Exception('Transaction failed');
         }
 
+        // Send email notification
+// After approving the transaction and updating database records
+$receiverEmail = $receiver['email']; // Assuming you have the user's email address
+$petName = $pet['name'];
+$subject = "Adoption Approval Notification";
+$body = "Dear User,<br><br>Your adoption application for <strong>$petName</strong> has been approved. Please visit our office next week to claim your new pet.<br><br>Best Regards,<br>Vopet";
+
+// Send the email
+$this->sendEmail($receiverEmail, $subject, $body);
+
+
+
         return $this->respondUpdated(['message' => 'Transaction approved']);
-    } catch (\Exception $e) { // Use a backslash for global namespace if needed
-        // Log the error for server diagnostics
-        log_message('error', 'Transaction approval error: ' . $e->getMessage());
-
-        // Rollback the transaction in case of error
+    } catch (\Exception $e) {
         $db->transRollback();
-
-        // Return a generic error message to the client for security reasons
+        log_message('error', 'Transaction approval error: ' . $e->getMessage());
         return $this->failServerError('An error occurred during the transaction approval process.');
     }
 }
@@ -437,6 +470,7 @@ public function rejectTransaction()
     try {
         $json = $this->request->getJSON();
         $transactionId = isset($json->transaction_id) ? (int)$json->transaction_id : 0;
+        $reason = $json->reason ?? 'No reason provided'; // Capture the rejection reason
         $status = 'denied'; // Assuming you're setting the status directly here
 
         if (!$transactionId) {
@@ -448,40 +482,50 @@ public function rejectTransaction()
         $loggedInUserId = $decoded->sub;
         $db->transStart(); // Begin transaction
 
-        // Retrieve the transaction to get the associated pet ID
         $transaction = $this->transactions->find($transactionId);
         if (!$transaction) {
             return $this->failNotFound('Transaction not found.');
         }
 
-        // Update the transaction's status to 'denied'
         $this->transactions->update($transactionId, ['status' => $status]);
 
-        // Update the pet's status back to 'available'
         $petId = $transaction['pet_id'];
         $this->pets->update($petId, ['status' => 'available']);
 
-
-
-        $pet = $this->pets->find($transaction['pet_id']);
-        if (!$pet) {
-            return $this->failNotFound('Pet not found');
-        }
-
-
+        $pet = $this->pets->find($petId);
         $receiverId =  $transaction['user_id'];
-        $messageData = [
+        $receiver = $this->users->find($receiverId); // Assuming users model is available
+
+        // Insert rejection notice
+        $this->messages->insert([
             'sender_id' => $loggedInUserId,
             'receiver_id' => $receiverId,
-            'content' => 'Adoption rejected for pet ID: ' . $pet['pet_id'] . ' named '. $pet['name'] ,
-        ];
-        $this->messages->insert($messageData);
+            'content' => 'Adoption rejected for pet ID: ' . $pet['pet_id'] . ' named ' . $pet['name'],
+        ]);
+
+        // Insert rejection reason
+        $this->messages->insert([
+            'sender_id' => $loggedInUserId,
+            'receiver_id' => $receiverId,
+            'content' => 'Reason for rejection: ' . $reason,
+        ]);
 
         $db->transComplete(); // Attempt to commit the transaction
 
         if ($db->transStatus() === false) {
             throw new \Exception('Transaction failed to complete.');
         }
+
+      // After rejecting the transaction and updating database records
+$receiverEmail = $receiver['email']; // Assuming you have the user's email address
+$petName = $pet['name'];
+$reason = $json->reason ?? 'No specific reason provided'; // Capture the rejection reason from the request
+$subject = "Adoption Rejection Notification";
+$body = "Dear User,<br><br>We regret to inform you that your adoption application for <strong>$petName</strong> has been rejected.<br><br>Reason for Rejection: $reason<br><br>Should you have any questions or require further clarification, please do not hesitate to contact us.<br><br>Best Regards,<br>Vopet";
+
+// Send the email
+$this->sendEmail($receiverEmail, $subject, $body);
+
 
         return $this->respondUpdated(['message' => 'Transaction denied and pet status updated to available.']);
     } catch (\Exception $e) {
@@ -490,21 +534,57 @@ public function rejectTransaction()
         return $this->failServerError('An error occurred during the rejection process.');
     }
 }
+
+function sendEmail($to, $subject, $body, $isHTML = true, $altBody = '')
+{
+    $mail = new PHPMailer(true);
+
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'alluasan599@gmail.com';
+        $mail->Password = 'oxht neem udqo pvgn';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        // Recipients
+        $mail->setFrom('alluasan599@gmail.com', 'Mailer');
+
+        $mail->addAddress($to); // Add a recipient
+
+        // Content
+        $mail->isHTML($isHTML); // Set email format to HTML
+        $mail->Subject = $subject;
+        $mail->Body = $body;
+        if (!$isHTML) {
+            $mail->AltBody = $altBody; // Optional: For non-HTML mail clients
+        }
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        log_message('error', "Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
 public function getTransactionsHistory()
 {
     try {
         // Define the statuses you want to include in the history
-        $statuses = [ 'approved', 'denied', 'unclaimed', 'completed'];
+        $statuses = ['approved', 'denied', 'unclaimed', 'completed'];
 
         $transactions = $this->transactions
-        ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
-                  pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.status AS pet_status, pets.info, pets.photo, pets.gender,
-                  users.fname, users.lname, users.email, users.contact_number, users.picture_url')
-        ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
-        ->join('users', 'users.user_id = transactions.user_id', 'left')
-        ->whereIn('transactions.status', $statuses)
-        ->orderBy('transactions.created_at', 'DESC') // Add this line to sort by `created_at` in descending order
-        ->findAll();
+            ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
+                      pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.color, pets.status AS pet_status, 
+                      pets.distinguishing_marks, pets.photo, pets.gender,
+                      users.fname, users.lname, users.email, users.contact_number, users.picture_url')
+            ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
+            ->join('users', 'users.user_id = transactions.user_id', 'left')
+            ->whereIn('transactions.status', $statuses)
+            ->orderBy('transactions.created_at', 'DESC') // Ensure transactions are sorted by creation date in descending order
+            ->findAll();
 
         return $this->respond([
             'status' => 200,
@@ -520,6 +600,7 @@ public function getTransactionsHistory()
         ], 500);
     }
 }
+
 public function markTransactionAsCompleted()
 {
     $db = \Config\Database::connect(); // Get the database connection instance
@@ -927,45 +1008,205 @@ public function addMedicalHistory()
         // Return the fetched messages as a JSON response
         return $this->respond($messages);
     }
-public function sendMessages()
-{
-    // Include user id in the announcement data
-    $jwt = $this->request->getHeaderLine('Authorization');
-    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
-    $loggedInUserId = $decoded->sub;
-
-    // Get the content and receiver_id from the request body
-    $content = $this->request->getVar('content');
-    $receiverId = $this->request->getVar('receiver_id');
-
-    // Assume the creation date is handled automatically by the database, or use the current timestamp
-    // $createdAt = date('Y-m-d H:i:s'); // Use this if you need to set created_at manually
-
-    // Insert the message into the database
-    $inserted = $this->messages->insert([
-        'content' => $content,
-        'sender_id' => $loggedInUserId,
-        // 'created_at' => $createdAt, // Uncomment if you're setting created_at manually
-        'receiver_id' => $receiverId
-    ]);
-
-    // Check if message was inserted successfully
-    if ($inserted) {
-        // Send a notification to the receiver
-        $notificationTitle = 'New Message from Vet Clinic';
-        $notificationBody =  $content; // Customize your message content
-        $this->sendPushNotificationToUser($receiverId, $notificationTitle, $notificationBody);
-
-        // Return a success response
-        return $this->respondCreated([
-            'success' => true,
-            'message' => 'Message sent successfully.'
+    public function sendMessages()
+    {
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $loggedInUserId = $decoded->sub;
+    
+        $content = $this->request->getVar('content');
+        $receiverId = $this->request->getVar('receiver_id');
+    
+        if ($content === '@generate adoption Agreement') {
+            if ($this->checkUserRoleAndPendingTransactions($receiverId)) {
+                $emailSent = $this->generateAndSendAdoptionAgreement($receiverId);
+                if ($emailSent) {
+                    $followUpContent = 'Please check your email for the adoption agreement.';
+                    $this->messages->insert([
+                        'content' => $followUpContent,
+                        'sender_id' => $loggedInUserId, // Assuming this is the system or admin user ID
+                        'receiver_id' => $receiverId,
+                    ]);
+                    return $this->respondCreated(['message' => $followUpContent]);
+                } else {
+                    return $this->failServerError('Failed to send the adoption agreement. Please contact support.');
+                }
+            } else {
+                return $this->fail('Operation not permitted. Either the receiver is not a user or there are no pending adoptions.', 403);
+            }
+        }
+    
+        $inserted = $this->messages->insert([
+            'content' => $content,
+            'sender_id' => $loggedInUserId,
+            'receiver_id' => $receiverId
         ]);
-    } else {
-        // Handle the error case
-        return $this->failServerError('Failed to send message');
+    
+        if ($inserted) {
+            $notificationTitle = 'New Message from Vet Clinic';
+            $notificationBody =  $content;
+            $this->sendPushNotificationToUser($receiverId, $notificationTitle, $notificationBody);
+            return $this->respondCreated(['success' => true, 'message' => 'Message sent successfully.']);
+        } else {
+            return $this->failServerError('Failed to send message');
+        }
     }
+    
+    private function generateAndSendAdoptionAgreement($receiverId)
+    {
+        $userInfo = $this->users->find((int)$receiverId);
+        if ($userInfo['role'] !== 'user') {
+            return false; // Return false if the receiver is not a user
+        }
+    
+        $pendingAdoptions = $this->transactions->where('user_id', (int)$receiverId)
+                                                ->where('status', 'requested')
+                                                ->findAll();
+        
+        $pets = [];
+        foreach ($pendingAdoptions as $adoption) {
+            $pets[] = $this->pets->find($adoption['pet_id']);
+        }
+    
+        $pdfFilePath = $this->createAdoptionAgreementContent($pets);
+    
+        return $this->sendEmailWithAttachment($userInfo['email'], "Adoption Agreement", "Please find attached the adoption agreement.", $pdfFilePath);
+    }
+    
+    function sendEmailWithAttachment($to, $subject, $body, $attachmentPath = '', $isHTML = true, $altBody = '') {
+        $mail = new PHPMailer(true);
+    
+        try {
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'alluasan599@gmail.com';
+            $mail->Password = 'oxht neem udqo pvgn';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
+            // Recipients
+            $mail->setFrom('alluasan599@gmail.com', 'Mailer');
+                        $mail->addAddress($to); // Add a recipient
+    
+            // Content
+            $mail->isHTML($isHTML); // Set email format to HTML
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            if (!$isHTML) {
+                $mail->AltBody = $altBody; // Optional: For non-HTML mail clients
+            }
+    
+            // Attachment
+            if (!empty($attachmentPath) && file_exists($attachmentPath)) {
+                $mail->addAttachment($attachmentPath); // Attach PDF if exists
+            } else {
+                log_message('error', "PDF attachment missing or not readable: $attachmentPath");
+                // Optionally, handle the error appropriately
+            }
+    
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            log_message('error', "Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
+            return false;
+        }
+    }
+    
+
+    private function createAdoptionAgreementContent($pets) {
+ // Initialize HTML content with basic styling
+$htmlContent = "<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        h1, h2 { color: #333; }
+        p, ul { font-size: 14px; }
+        .pet-details, .adopter-responsibilities { margin-bottom: 20px; }
+        .signature-area { margin-top: 40px; }
+        .signature { font-family: 'Reenie Beanie', cursive; font-size: 24px; }
+        .line { border-bottom: 1px solid #bbb; width: 300px; }
+        .signatory { margin-top: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Adoption Agreement</h1>
+    <p>This agreement confirms the adoption of the following pet(s) under the terms and conditions agreed upon by both the adopter and the adoption agency.</p>";
+
+// Iterate over each pet to include their details
+foreach ($pets as $pet) {
+    $htmlContent .= "<div class='pet-details'><b>Pet Name:</b> " . htmlspecialchars($pet['name']) . "<br>"
+                  . "<b>Species:</b> " . htmlspecialchars($pet['species']) . "<br>"
+                  . "<b>Breed:</b> " . htmlspecialchars($pet['breed']) . "<br>"
+                  . "<b>Age:</b> " . htmlspecialchars($pet['age']) . "<br>"
+                  . "<b>Gender:</b> " . htmlspecialchars($pet['gender']) . "<br>"
+                  . "<b>Color:</b> " . htmlspecialchars($pet['color']) . "<br>"
+                  . "<b>Distinguishing Marks:</b> " . htmlspecialchars($pet['distinguishing_marks']) . "</div>";
 }
+
+// Include adopter's responsibilities
+$htmlContent .= "<div class='adopter-responsibilities'><h2>Adopter's Responsibilities:</h2><ul>"
+              . "<li>Provide a loving and safe home for the pet(s).</li>"
+              . "<li>Ensure the pet(s) receive regular veterinary care.</li>"
+              . "<li>Comply with all local pet ownership laws and regulations.</li></ul>"
+              . "<p>This agreement is binding and confirms the adopter's commitment to the care and welfare of the adopted pet(s).</p></div>";
+
+// Add signature area
+$htmlContent .= "<div class='signature-area'>
+                    <div class='line'></div>
+                    <div class='signatory'>Adopter's Signature</div>
+                    <div class='signature' contenteditable='true'>[Signature]</div>
+                    <div>Date: <span>".date("Y-m-d")."</span></div>
+                </div>
+                <div class='signature-area'>
+                    <div class='line'></div>
+                    <div class='signatory'>Agency Representative Signature</div>
+                    <div class='signature' contenteditable='true'>[Signature]</div>
+                    <div>Date: <span>".date("Y-m-d")."</span></div>
+                </div>
+</body>
+</html>";
+
+    
+        // Initialize Dompdf
+        try {
+            $dompdf = new \Dompdf\Dompdf();
+            $dompdf->loadHtml($htmlContent);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            $pdfDirectory = ROOTPATH . 'public/pdf'; // Adjust this path as needed.
+            $pdfFileName = 'AdoptAgreement_' . time() . '.pdf'; // Using time() to avoid file name conflicts.
+            $pdfFilePath = $pdfDirectory . $pdfFileName;
+    
+            if (!file_put_contents($pdfFilePath, $dompdf->output())) {
+                // Handle failure to save PDF
+                log_message('error', "Failed to save the generated PDF to: " . $pdfFilePath);
+                return false;
+            }
+        } catch (Exception $e) {
+            // Handle any exceptions during PDF generation
+            log_message('error', "Exception while generating PDF: " . $e->getMessage());
+            return false;
+        }
+    
+        return $pdfFilePath;
+    }
+    
+
+private function checkUserRoleAndPendingTransactions($userId)
+{
+    $userInfo = $this->users->find((int)$userId);
+    if ($userInfo && $userInfo['role'] === 'user') {
+        $pendingAdoptions = $this->transactions
+                                 ->where('user_id', (int)$userId)
+                                 ->where('status', 'requested')
+                                 ->findAll();
+        return !empty($pendingAdoptions);
+    }
+    return false;
+}
+
 
 
     public function sendPushNotificationToUser($receiverId, $title, $body)
@@ -1107,7 +1348,62 @@ public function sendMessages()
     return $this->respondCreated('Medical history added successfully');
 }
 
+public function addNewClinic() {
+    // Validation rules for user input
+    $rules = [
+        'name' => 'required|min_length[2]', // Clinic name
+        'address' => 'required|min_length[5]', // Clinic address
+        'fname' => 'required|min_length[2]',
+        'lname' => 'required|min_length[2]',
+        'email' => [
+            'rules' => 'required|valid_email|is_unique[users.email]',
+            'errors' => [
+                'is_unique' => 'This email is already registered. Please use another email.'
+            ]
+        ],
+        'password' => 'required|min_length[8]',
+        'birthdate' => 'required',
+        'sex' => 'required',
+        'contact_number' => 'required|min_length[10]',
+        // Additional rules for clinic information if necessary
+    ];
+
+    $data = $this->request->getJSON(true);
+
+    if (!$this->validate($rules)) {
+        return $this->fail($this->validator->getErrors());
+    }
+
+    // Hash password before saving
+    $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+    $data['role'] = 'clinic'; // or 'user', depending on your roles setup
+
+    // Since it's done by admin, auto-validate the user
+    $data['email_confirmed'] = 1; 
+
+    // Attempt to save user information
+    if (!$userId = $this->users->insert($data)) {
+        return $this->fail('Could not create user.');
+    }
+    $userId = $this->users->where('email', $data['email'])->first();
     
+    // Prepare clinic data
+    $clinicData = [
+        'clinic_name' => $data['name'],
+        'user_id' => (int)$userId['user_id'], // Associate the clinic with the newly created user
+    ];
+
+    // Attempt to save clinic information
+   $this->clinic->insert($clinicData);
+
+
+    // Success response
+    return $this->respondCreated([
+        'message' => 'Clinic and associated user created successfully',
+        
+    ]);
+}
+
 
 
 }

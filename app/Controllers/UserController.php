@@ -286,15 +286,21 @@ public function changeAddress()
         'province' => 'required',
         'municipality' => 'required',
         'barangay' => 'required',
-        'zipcode' => 'required|numeric|max_length[5]'
+        'zipcode' => 'required|numeric|max_length[5]',
+        'lotNumber' => 'required',
+        'houseNumber' => 'required',
+        'streetName' => 'required', // Assuming the field name is 'street'
     ];
 
     if ($this->validate($rules)) {
-        $fullAddress = $this->request->getVar('region') . ', ' .
-                       $this->request->getVar('province') . ', ' .
-                       $this->request->getVar('municipality') . ', ' .
-                       $this->request->getVar('barangay') . ', ' .
-                       $this->request->getVar('zipcode');
+        $fullAddress = $this->request->getVar('lotNumber') . ', ' .
+        $this->request->getVar('houseNumber') . ', ' .
+        $this->request->getVar('streetName') . ', ' .
+        $this->request->getVar('barangay') . ', ' .
+        $this->request->getVar('municipality') . ', ' .
+        $this->request->getVar('province') . ', ' .
+        $this->request->getVar('region') . ', ' .
+        $this->request->getVar('zipcode');
 
         $data = ['address' => $fullAddress];
 
