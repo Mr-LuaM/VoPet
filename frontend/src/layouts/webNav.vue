@@ -46,6 +46,7 @@
 
   <!-- Account Management -->
   <v-list-item
+  v-if="isAdmin"
     link
     to="/admin/accountManagement"
     prepend-icon="mdi-account-group"
@@ -87,6 +88,7 @@
 
     <!-- History -->
     <v-list-item
+    v-if="isAdmin"
     link
     to="/admin/rescue"
     prepend-icon="mdi-ambulance"
@@ -110,6 +112,7 @@
 
   <!-- Announcements -->
   <v-list-item
+  v-if="isAdmin"
     link
     to="/admin/announcements"
     prepend-icon="mdi-post"
@@ -134,7 +137,7 @@
 
         <template v-slot:append>
           <div class="pa-2">
-            <v-btn @click="goToSettings" block variant="flat" class="bg-info">Settings</v-btn>
+            <v-btn   v-if="isAdmin" @click="goToSettings" block variant="flat" class="bg-info">Settings</v-btn>
           </div>
           <div class="pa-2">
             <v-btn @click="userStore.logout" block variant="flat"  class="bg-error">Logout</v-btn>
@@ -159,10 +162,11 @@
     </v-app>
   </template>
   <script setup>
-  import { ref, watch, onUnmounted } from 'vue';
+  import { ref, watch, onUnmounted,onMounted } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useUserStore } from '@/stores/userStore';
   
+  const isAdmin = ref(false);
   const router = useRouter();
   const route = useRoute();
   const userStore = useUserStore();
@@ -195,7 +199,14 @@
   // Cleanup to remove event listener when component unmounts
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
+
   });
+
+  onMounted(()=>{
+    if (userStore.userDetails.role === 'admin') {
+    isAdmin.value = true;
+  }
+  })
   
   const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value;

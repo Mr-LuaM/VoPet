@@ -136,12 +136,12 @@ const login = async () => {
         await userStore.fetchUserDetails(); // Fetch and store user details
 
         // Redirect based on user role, assuming role is now stored in userStore
-        console.log("Redirecting to role:", userStore.role);
-        if (userStore.role === 'admin') {
-          router.push({ name: 'adminDashboard' });
-        } else if (userStore.role === 'user') {
-          router.push({ name: 'userDashboard' });
-        }
+        if (userStore.role === 'admin' || userStore.role === 'clinic') {
+    router.push({ name: 'adminDashboard' });
+} else if (userStore.role === 'user') {
+    router.push({ name: 'userDashboard' });
+}
+
       }
   } catch (error) {
     let errorMessage = 'An unknown error occurred. Please try again.';

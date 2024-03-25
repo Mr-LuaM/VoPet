@@ -175,25 +175,23 @@
             ></v-textarea>
             </v-col>
           </v-row>
-          <v-row>
+          <v-row v-if="userStore.userDetails.role !== 'clinic'">
             <v-col cols="12">
- 
-   <v-autocomplete
-   v-model="selectedClinic"
-   :items="clinics"
-   item-title="name"
-   item-value="name"
-   label="Select Clinic"
-   return-object
-   :disabled="clinics.length === 0 || loading"
-   variant="underlined"
-   hint="Null if global pet"
-   persistent-hint
- ></v-autocomplete>
- 
- 
-</v-col>
-</v-row>
+              <v-autocomplete
+                v-model="selectedClinic"
+                :items="clinics"
+                item-title="name"
+                item-value="name"
+                label="Select Clinic"
+                return-object
+                :disabled="clinics.length === 0 || loading"
+                variant="underlined"
+                hint="Null if global pet"
+                persistent-hint
+              ></v-autocomplete>
+            </v-col>
+          </v-row>
+          
 
               <v-btn
                 block
@@ -388,47 +386,55 @@ const handleCancel = () => {
   // Pet Operations: Add, Update, Fetch, and Archive
   async function addOrUpdatePet() {
     const { valid } = await form.value.validate();
-  if (valid) {
-    loading.value = true;
-   
-  
-    const formData = new FormData();
-    formData.append('name', petName.value);
-    formData.append('age', petAge.value);
-    formData.append('species', petSpecies.value);
-    formData.append('breed', petBreed.value);
-    formData.append('color', petColor.value);
-    formData.append('gender', petGender.value);
+    if (valid) {
+        loading.value = true;
 
-  const clinicId = parseInt(selectedClinic.value.id, 10); // Convert to integer
-  formData.append('clinic_id', clinicId);
+        const formData = new FormData();
+        formData.append('name', petName.value);
+        formData.append('age', petAge.value);
+        formData.append('species', petSpecies.value);
+        formData.append('breed', petBreed.value);
+        formData.append('color', petColor.value);
+        formData.append('gender', petGender.value);
 
-    formData.append('distinguishing_marks', petDistinguishingMarks.value);
-    if (petImg.value) {
-      formData.append('photo', petImg.value[0]);
+        const clinicId = parseInt(selectedClinic.value.id, 10); // Convert to integer
+        formData.append('clinic_id', clinicId);
+
+        formData.append('distinguishing_marks', petDistinguishingMarks.value);
+        if (petImg.value) {
+            formData.append('photo', petImg.value[0]);
+        }
+        if (petId.value) {
+            formData.append('pet_id', petId.value);
+        }
+
+        try {
+            const response = petId.value ?
+                await axios.post(`/admin/updatePet`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${userStore.token}`
+                    }
+                }) :
+                await axios.post(`/admin/addPet`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${userStore.token}`
+                    }
+                });
+
+            const successMessage = petId.value ? 'Pet updated successfully' : 'Pet added successfully';
+            snackbar.value?.openSnackbar(successMessage, 'success');
+            dialog.value = false;
+            resetFormFields();
+            getPets();
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'An unknown error occurred. Please try again.';
+            snackbar.value?.openSnackbar(errorMessage, 'error');
+        } finally {
+            loading.value = false;
+        }
     }
-    if (petId.value) {
-      formData.append('pet_id', petId.value);
-    }
-  
-    try {
-      const response = petId.value ?
-        await axios.post(`/admin/updatePet`, formData) :
-        await axios.post(`/admin/addPet`, formData);
-  
-      const successMessage = petId.value ? 'Pet updated successfully' : 'Pet added successfully';
-       snackbar.value?.openSnackbar(successMessage, 'success');
-      dialog.value = false;
-      resetFormFields();
-      getPets();
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'An unknown error occurred. Please try again.';
-       snackbar.value?.openSnackbar(errorMessage, 'error');
-    } finally {
-      loading.value = false;
-    }
-  }
-  }
+}
+
   const getColor = (status) => {
   if (status === 'active') {
     return 'green';
@@ -440,15 +446,18 @@ const handleCancel = () => {
     return 'grey'; // A default color if the status is something else
   }
 };
-  async function getPets() {
-    try {
-      const response = await axios.get(`/admin/pets`);
-      pets.value = response.data;
-    } catch (error) {
-      console.error('Failed to fetch pets:', error);
-       snackbar.value?.openSnackbar('Failed to load pets.', 'error');
-    }
+async function getPets() {
+  try {
+    const response = await axios.get(`/admin/pets`, {
+      headers: { Authorization: `Bearer ${userStore.token}` }
+    });
+    pets.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch pets:', error);
+    snackbar.value?.openSnackbar('Failed to load pets.', 'error');
   }
+}
+
   const archivePet = async (petId) => {
   try {
     const response = await axios.post(`/admin/archivePet`, { pet_id: petId });

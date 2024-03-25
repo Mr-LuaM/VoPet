@@ -44,106 +44,118 @@ const authRoutes = [
   },
 ];
 
+// Shared routes accessible to both admin and clinic
+const sharedAdminClinicRoutes = [
+  {
+    path: '/admin',
+    component: webNav,
+    meta: { requiresAuth: true, roles: ['admin', 'clinic'] },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'adminDashboard', // Shared
+        component: () => import('../views/Admin/Dashboard.vue'),
+      },
+      {
+        path: 'map',
+        name: 'mapDashboard', // Shared
+        component: () => import('../views/Admin/Map.vue'),
+      },
+      {
+        path: 'petManagement',
+        name: 'petManagement', // Shared
+        component: () => import('../views/Admin/PetManagement.vue'),
+      },
+      {
+        path: 'medicalHistory',
+        name: 'medicalHistory', // Shared
+        component: () => import('../views/Admin/MedicalHistory.vue'),
+      },
+      {
+        path: 'transaction',
+        name: 'transaction', // Shared
+        component: () => import('../views/Admin/Transaction.vue'),
+      },
+      {
+        path: 'history',
+        name: 'history', // Shared
+        component: () => import('../views/Admin/History.vue'),
+      },
+      {
+        path: 'message',
+        name: 'message', // Shared
+        component: () => import('../views/Admin/Message.vue'),
+      },
+      {
+        path: 'profile',
+        name: 'profile', // Shared
+        component: () => import('../views/Admin/Profile.vue'),
+      },
+      {
+        path: 'edit/profile', // Path: /user/edit/profile
+        name: 'admin-edit-profile', // Shared
+        component: () => import('../views/Admin/EditProfile.vue'),
+      },
+      {
+        path: 'edit/contacts', // Path: /user/edit/contacts
+        name: 'admin-edit-contacts', // Shared
+        component: () => import('../views/Admin/EditContacts.vue'),
+      },
+      {
+        path: 'edit/address', // Path: /user/edit/address
+        name: 'admin-edit-address', // Shared
+        component: () => import('../views/Admin/EditAddress.vue'),
+      },
+      {
+        path: 'edit/security', // Path: /user/edit/security
+        name: 'admin-security', // Shared
+        component: () => import('../views/Admin/EditSecurity.vue'),
+      },
+      {
+        path: 'settings', // Path: /user/edit/security
+        name: 'settings', // Shared
+        component: () => import('../views/Admin/Settings.vue'),
+      },
+    ],
+  },
+];
+
 // Admin routes
 const adminRoutes = [
   {
     path: '/admin',
     component: webNav,
     meta: { requiresAuth: true, role: 'admin' },
-    children: [{
-      path: 'dashboard',
-      name: 'adminDashboard',
-      component: () => import('../views/Admin/Dashboard.vue'),
-    },
-    {
-      path: 'map',
-      name: 'mapDashboard',
-      component: () => import('../views/Admin/Map.vue'),
-    },
-    {
-      path: 'petManagement',
-      name: 'petManagement',
-      component: () => import('../views/Admin/PetManagement.vue'),
-    },
-    {
-      path: 'medicalHistory',
-      name: 'medicalHistory',
-      component: () => import('../views/Admin/MedicalHistory.vue'),
-    },
-    {
-      path: 'accountManagement',
-      name: 'accountManagement',
-      component: () => import('../views/Admin/AccountManagement.vue'),
-    },
-    {
-      path: 'transaction',
-      name: 'transaction',
-      component: () => import('../views/Admin/Transaction.vue'),
-    },
-    {
-      path: 'history',
-      name: 'history',
-      component: () => import('../views/Admin/History.vue'),
-    },
-    {
-      path: 'rescue',
-      name: 'rescue',
-      component: () => import('../views/Admin/Rescue.vue'),
-    },
-    {
-      path: 'message',
-      name: 'message',
-      component: () => import('../views/Admin/Message.vue'),
-    },
-    {
-      path: 'announcements',
-      name: 'announcements',
-      component: () => import('../views/Admin/Announcement.vue'),
-    },
-    {
-      path: 'profile',
-      name: 'profile',
-      component: () => import('../views/Admin/Profile.vue'),
-    },
-    {
-      path: 'edit/profile', // Path: /user/edit/profile
-      name: 'admin-edit-profile',
-      component: () => import('../views/Admin/EditProfile.vue'),
-    },
-    {
-      path: 'edit/contacts', // Path: /user/edit/contacts
-      name: 'admin-edit-contacts',
-      component: () => import('../views/Admin/EditContacts.vue'),
-    },
-    {
-      path: 'edit/address', // Path: /user/edit/address
-      name: 'admin-edit-address',
-      component: () => import('../views/Admin/EditAddress.vue'),
-    },
-    {
-      path: 'edit/security', // Path: /user/edit/security
-      name: 'admin-security',
-      component: () => import('../views/Admin/EditSecurity.vue'),
-    },
-    {
-      path: 'settings', // Path: /user/edit/security
-      name: 'settings',
-      component: () => import('../views/Admin/Settings.vue'),
-    },
-    {
-      path: 'edit/vet-info', // Path: /user/edit/security
-      name: 'admin-edit-vet-info',
-      component: () => import('../views/Admin/EditVetInfo.vue'),
-    },
-    {
-      path: 'edit/app-name', // Path: /user/edit/security
-      name: 'admin-edit-app-name',
-      component: () => import('../views/Admin/EditAppName.vue'),
-    },
-    
-    ]
+    children: [
+      ...sharedAdminClinicRoutes, // Include shared routes accessible to both admin and clinic
+      // Admin-only routes
+      {
+        path: 'accountManagement',
+        name: 'accountManagement',
+        component: () => import('../views/Admin/AccountManagement.vue'),
+      },
+      {
+        path: 'rescue',
+        name: 'rescue',
+        component: () => import('../views/Admin/Rescue.vue'),
+      },
+      {
+        path: 'announcements',
+        name: 'announcements',
+        component: () => import('../views/Admin/Announcement.vue'),
+      },
+      {
+        path: 'edit/vet-info', // Path: /user/edit/security
+        name: 'admin-edit-vet-info',
+        component: () => import('../views/Admin/EditVetInfo.vue'),
+      },
+      {
+        path: 'edit/app-name', // Path: /user/edit/security
+        name: 'admin-edit-app-name',
+        component: () => import('../views/Admin/EditAppName.vue'),
+      },
+    ],
   },
-
 ];
 
 // User routes
@@ -265,7 +277,7 @@ const errorRoute = [
   
 ];
 
-const routes = [...authRoutes, ...adminRoutes, ...userRoutes,...userRoutesnoNAv, ...userEditRoutes, ...errorRoute ];
+const routes = [...authRoutes, ...adminRoutes,...sharedAdminClinicRoutes, ...userRoutes,...userRoutesnoNAv, ...userEditRoutes, ...errorRoute ];
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),

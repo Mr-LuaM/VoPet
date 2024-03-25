@@ -177,7 +177,11 @@ const transactions = ref([]);
   
 const getTransactions = async () => {
   try {
-    const response = await axios.get('/admin/transactions');
+    const response = await axios.get('/admin/transactions', {
+      headers: {
+        Authorization: `Bearer ${userStore.token}`
+      }
+    });
     // Check if response.data.data exists and is an array before mapping
     if (response.data && Array.isArray(response.data.data)) {
       transactions.value = response.data.data.map((transaction) => {
