@@ -64,7 +64,7 @@ class AdminController extends BaseController
             $role = $user['role']; // Assuming 'role' is a key in the user array
     
             // Check if the user has the admin role
-            if ($role === 'admin') {
+            if ($role === 'admin' || $role === 'user' || $role === 'clinic') {
                 // Get users with only the necessary details for user management, excluding the current user
                 $users = $this->db->table('users as u')
                 ->select('u.user_id, u.email, u.role, u.fname, u.lname, u.status, u.last_login_at, u.last_login_ip, u.picture_url, c.clinic_id, c.clinic_name, c.created_at AS clinic_created_at, c.updated_at AS clinic_updated_at')
@@ -201,8 +201,15 @@ public function addUser(){
         }
     }
     public function getPets()
-    {
-        // Ensure you correctly adjust field names based on your actual database schema.
+{
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $userId = $decoded->sub;
+    
+    // Check if clinic_id is not null
+    if (isset($decoded->clinic_id)) {
+        $clinicId = $decoded->clinic_id;
+        // Adjust the query to include clinic_id filter
         $recentPets = $this->pets
             ->select('
                 pets.pet_id,
@@ -219,20 +226,61 @@ public function addUser(){
                 pets.gender,
                 pets.clinic_id,
                 clinic_details.clinic_name,
-                clinic_details.clinic_id as clinic_detail_id') // Renamed to avoid column name conflict
-            ->join('clinic_details', 'clinic_details.clinic_id = pets.clinic_id', 'left') // Correct join condition based on your schema
+                clinic_details.clinic_id as clinic_detail_id') 
+            ->join('clinic_details', 'clinic_details.clinic_id = pets.clinic_id', 'left')
+            ->where('pets.status', 'available')
+            ->where('pets.clinic_id', $clinicId) // Filter by clinic_id
+            ->orderBy('pets.created_at', 'desc')
+            ->findAll();
+    } else {
+        // For admin role or other roles without clinic_id, fetch all available pets
+        $recentPets = $this->pets
+            ->select('
+                pets.pet_id,
+                pets.name,
+                pets.age,
+                pets.species,
+                pets.breed,
+                pets.color,
+                pets.status,
+                pets.distinguishing_marks,
+                pets.photo,
+                pets.created_at,
+                pets.updated_at,
+                pets.gender,
+                pets.clinic_id,
+                clinic_details.clinic_name,
+                clinic_details.clinic_id as clinic_detail_id') 
+            ->join('clinic_details', 'clinic_details.clinic_id = pets.clinic_id', 'left')
             ->where('pets.status', 'available')
             ->orderBy('pets.created_at', 'desc')
-           // Correct method to limit the result set to the 4 most recent pets
-            ->findAll(); // Use findAll with the limit instead of get()->getResult();
-    
-        return $this->respond($recentPets);
+            ->findAll();
     }
+
+    return $this->respond($recentPets);
+}
+
     
 
 public function addPet()
 {
     helper(['form', 'url']);
+
+    // Decode JWT token to get user information
+    $jwt = $this->request->getHeaderLine('Authorization');
+    $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    $userId = $decoded->sub;
+    $clinicId = null;
+
+    // Check if clinic ID is present in JWT payload
+    if (isset($decoded->clinic_id)) {
+        $clinicId = $decoded->clinic_id;
+    } else {
+        // Clinic ID not present in JWT payload, check form data
+        $clinicId = $this->request->getVar('clinic_id');
+        // Check if clinic ID is not a number or if it's empty, then set it to null
+        $clinicId = is_numeric($clinicId) ? $clinicId : null;
+    }
 
     // Adjust the validation for 'age' to accommodate '1y 3m' format and add 'color'
     $inputValidation = $this->validate([
@@ -243,7 +291,6 @@ public function addPet()
         'color' => 'required', // Added color validation
         'gender' => 'required',
         'distinguishing_marks' => 'required',
-        'clinic_id' => 'permit_empty', // Adjusted from 'info' to 'distinguishing_marks'
         'photo' => [
             'uploaded[photo]',
             'mime_in[photo,image/jpg,image/jpeg,image/gif,image/png]',
@@ -263,9 +310,7 @@ public function addPet()
     } else {
         return $this->fail('Invalid photo upload');
     }
-    $clinicId = $this->request->getVar('clinic_id');
-    // Check if clinicId is not a number or if it's empty, then set it to null
-    $clinicId = is_numeric($clinicId) ? $clinicId : null;
+
     // Include 'color' and use 'distinguishing_marks'
     $data = [
         'name' => $this->request->getVar('name'),
@@ -278,7 +323,7 @@ public function addPet()
         'photo' => $newName, // Use the stored path
         'status' => 'available',
         'clinic_id' => $clinicId, // Set clinic_id based on the check
-        ];
+    ];
 
     if ($this->pets->insert($data)) {
         return $this->respondCreated(['message' => 'Pet added successfully'], 201);
@@ -288,10 +333,12 @@ public function addPet()
 }
 
 
+
 public function updatePet()
 {
     helper(['form', 'url']);
 
+    // Define validation rules
     $rules = [
         'name' => 'required',
         'age' => 'required', // Consider custom validation rule for "1y 3m" format
@@ -305,15 +352,18 @@ public function updatePet()
         // Consider conditional validation for 'photo' if needed
     ];
 
+    // Validate input data
     if (!$this->validate($rules)) {
         return $this->fail($this->validator->getErrors());
     }
 
+    // Retrieve pet ID from request data
     $petId = $this->request->getPost('pet_id');
     if (!$petId) {
         return $this->fail('Pet ID is required for update', 400);
     }
 
+    // Process photo upload if provided
     $file = $this->request->getFile('photo');
     $photoPath = null;
     if ($file && $file->isValid() && !$file->hasMoved()) {
@@ -322,6 +372,7 @@ public function updatePet()
         $photoPath = '/uploads/pets/' . $newName;
     }
 
+    // Prepare data to update
     $dataToUpdate = [
         'name' => $this->request->getPost('name'),
         'age' => $this->request->getPost('age'),
@@ -330,20 +381,34 @@ public function updatePet()
         'color' => $this->request->getPost('color'), // Added color
         'gender' => $this->request->getPost('gender'),
         'distinguishing_marks' => $this->request->getPost('distinguishing_marks'), // Updated
-        'clinic_id' => $this->request->getVar('clinic_id') ?: null,
-
     ];
 
+    // Check if clinic ID is present in JWT payload or form data
+    $clinicId = null;
+    $decoded = JWT::decode(substr($this->request->getHeaderLine('Authorization'), 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+    if (isset($decoded->clinic_id)) {
+        $clinicId = $decoded->clinic_id;
+    } else {
+        $clinicId = $this->request->getVar('clinic_id');
+        $clinicId = is_numeric($clinicId) ? $clinicId : null;
+    }
+
+    // Assign clinic ID to data if available
+    $dataToUpdate['clinic_id'] = $clinicId;
+
+    // Update photo path if uploaded
     if ($photoPath !== null) {
         $dataToUpdate['photo'] = $newName; // Use path for consistency
     }
 
+    // Perform database update
     if ($this->pets->update($petId, $dataToUpdate)) {
         return $this->respondUpdated(['message' => 'Pet updated successfully']);
     } else {
         return $this->failServerError('Failed to update pet details');
     }
 }
+
 
 
 public function archivePet()
@@ -369,14 +434,26 @@ public function archivePet()
 public function getTransactions()
 {
     try {
-        $transactions = $this->transactions
+        // Get the clinic ID from the JWT token
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $clinicId = isset($decoded->clinic_id) ? $decoded->clinic_id : null;
+
+        // Retrieve transactions
+        $query = $this->transactions
             ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
                       pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.status AS pet_status, pets.distinguishing_marks, pets.color, pets.photo, pets.gender,
                       users.fname, users.lname, users.email, users.contact_number, users.picture_url')
             ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
             ->join('users', 'users.user_id = transactions.user_id', 'left')
-            ->where('transactions.status', 'requested')
-            ->findAll();
+            ->where('transactions.status', 'requested');
+
+        // Filter by clinic ID if available
+        if ($clinicId !== null) {
+            $query->where('pets.clinic_id', $clinicId);
+        }
+
+        $transactions = $query->findAll();
     
         return $this->respond([
             'status' => 200,
@@ -391,6 +468,7 @@ public function getTransactions()
         ], 500);
     }
 }
+
 
 
 public function approveTransaction()
@@ -572,10 +650,16 @@ function sendEmail($to, $subject, $body, $isHTML = true, $altBody = '')
 public function getTransactionsHistory()
 {
     try {
+        // Check for the authorization token and decode it to get the clinic ID
+        $jwt = $this->request->getHeaderLine('Authorization');
+        $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
+        $clinicId = isset($decoded->clinic_id) ? $decoded->clinic_id : null;
+
         // Define the statuses you want to include in the history
         $statuses = ['approved', 'denied', 'unclaimed', 'completed'];
 
-        $transactions = $this->transactions
+        // Query transactions based on clinic ID if available, otherwise fetch all transactions
+        $transactionsQuery = $this->transactions
             ->select('transactions.transaction_id, transactions.status, transactions.created_at, transactions.updated_at, 
                       pets.name AS pet_name, pets.age, pets.species, pets.breed, pets.color, pets.status AS pet_status, 
                       pets.distinguishing_marks, pets.photo, pets.gender,
@@ -583,8 +667,15 @@ public function getTransactionsHistory()
             ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
             ->join('users', 'users.user_id = transactions.user_id', 'left')
             ->whereIn('transactions.status', $statuses)
-            ->orderBy('transactions.created_at', 'DESC') // Ensure transactions are sorted by creation date in descending order
-            ->findAll();
+            ->orderBy('transactions.created_at', 'DESC'); // Ensure transactions are sorted by creation date in descending order
+
+        // Filter transactions by clinic ID if available
+        if ($clinicId !== null) {
+            $transactionsQuery->where('transactions.clinic_id', $clinicId);
+        }
+
+        // Execute the query
+        $transactions = $transactionsQuery->findAll();
 
         return $this->respond([
             'status' => 200,
@@ -600,6 +691,7 @@ public function getTransactionsHistory()
         ], 500);
     }
 }
+
 
 public function markTransactionAsCompleted()
 {
@@ -1021,7 +1113,13 @@ public function addMedicalHistory()
             if ($this->checkUserRoleAndPendingTransactions($receiverId)) {
                 $emailSent = $this->generateAndSendAdoptionAgreement($receiverId);
                 if ($emailSent) {
-                    $followUpContent = 'Please check your email for the adoption agreement.';
+                    $followUpContent = 'Adoption Agreement sent to email';
+                    $this->messages->insert([
+                        'content' => $followUpContent,
+                        'sender_id' => $loggedInUserId, // Assuming this is the system or admin user ID
+                        'receiver_id' => $receiverId,
+                    ]);
+                    $followUpContent = 'Please check your email';
                     $this->messages->insert([
                         'content' => $followUpContent,
                         'sender_id' => $loggedInUserId, // Assuming this is the system or admin user ID

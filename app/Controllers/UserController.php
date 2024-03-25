@@ -15,6 +15,9 @@ use Exception;
 class UserController extends ResourceController
 {
     use ResponseTrait;
+
+    protected $firebaseServerKey = 'AAAAGdrwYnc:APA91bGXw5cv3F3unpb56ySKuWglwbUrCNnYbsyZ7RxDCHLTHSIapFcRmcNoOpWIYIBY928el1PEN39VOyK_kqu1T13Pq78GqvrTg8T8EDmAxFY2Iv0S_B9E9Jf-TDL2RTaSZyXlx-IX';
+
     private $users;
     private $announcements;
 
@@ -382,7 +385,7 @@ public function messages()
     $loggedInUserId = $decoded->sub;
 
     // Get the receiver_id from the request body
-    $receiverId = $this->users->select('user_id')->where('role', 'admin')->first();
+    $receiverId = $this->request->getVar('receiver_id');
 
     // Fetch messages exchanged between the logged-in user and the specified receiver
     $messages = $this->db->table('messages')
@@ -398,33 +401,78 @@ public function messages()
     // Return the fetched messages as a JSON response
     return $this->respond($messages);
 }
-
 public function sendMessages()
 {
-    // Include user id in the announcement data
     $jwt = $this->request->getHeaderLine('Authorization');
     $decoded = JWT::decode(substr($jwt, 7), new Key(getenv('JWT_SECRET'), 'HS256'));
     $loggedInUserId = $decoded->sub;
 
-    // Get the content, sender_id, created_at, and receiver_id from the request body
     $content = $this->request->getVar('content');
-    $createdAt = $this->request->getVar('created_at');
-    $receiverId = $this->users->select('user_id')->where('role', 'admin')->first();;
+    $receiverId = $this->request->getVar('receiver_id');
 
-    // Insert the message into the database
-    $this->messages->insert([
+    $inserted = $this->messages->insert([
         'content' => $content,
         'sender_id' => $loggedInUserId,
-        'created_at' => $createdAt,
         'receiver_id' => $receiverId
     ]);
 
-    // Optionally, you can return a success message or response
-    return $this->response->setJSON([
-        'success' => true,
-        'message' => 'Message sent successfully.'
-    ]);
+    if ($inserted) {
+        $notificationTitle = 'New Message from Vet Clinic';
+        $notificationBody =  $content;
+        $this->sendPushNotificationToUser($receiverId, $notificationTitle, $notificationBody);
+        return $this->respondCreated(['success' => true, 'message' => 'Message sent successfully.']);
+    } else {
+        return $this->failServerError('Failed to send message');
+    }
 }
+
+
+
+
+
+
+
+
+
+
+public function sendPushNotificationToUser($receiverId, $title, $body)
+{
+// Fetch the FCM token of the receiver user
+$user = $this->users->find($receiverId); // Assuming `$this->users` is your user model instance
+if (empty($user['fcm_token'])) {
+    return 'User does not have a FCM token.';
+}
+
+$token = $user['fcm_token'];
+
+// Prepare the payload for the push notification
+$url = 'https://fcm.googleapis.com/fcm/send';
+$headers = [
+    'Authorization: key=' . $this->firebaseServerKey,
+    'Content-Type: application/json'
+];
+
+$fields = [
+    'to' => $token, // Use 'to' instead of 'registration_ids' for a single recipient
+    'notification' => [
+        'title' => $title,
+        'body' => $body,
+    ]
+];
+
+// Initialize cURL and send the notification
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+$result = curl_exec($ch);
+curl_close($ch);
+
+return json_decode($result, true);
+}
+
 
 public function petture(){
         // Decode the JWT token to get the user ID

@@ -18,8 +18,11 @@ class AuthController extends ResourceController
     use ResponseTrait;
     use SendVerificationEmail;
     private $users;
+    private $clinic;
     public function __construct(){
         $this->users = new \App\Models\UserModel();
+        $this->clinic = new \App\Models\ClinicDetails();
+
     }
 
 
@@ -174,65 +177,80 @@ class AuthController extends ResourceController
         echo 'hi';
     }
     public function login()
-{
-    $json = $this->request->getJSON(true);
-    $email = $json['email'] ?? '';
-    $password = $json['password'] ?? '';
-
-    $user = $this->users->where('email', $email)->first();
-
-    // Check if user exists
-    if (!$user) {
-        return $this->failNotFound('User not found');
-    }
+    {
+        $json = $this->request->getJSON(true);
+        $email = $json['email'] ?? '';
+        $password = $json['password'] ?? '';
+    
+        $user = $this->users->where('email', $email)->first();
+    
+        // Check if user exists
+        if (!$user) {
+            return $this->failNotFound('User not found');
+        }
+    
+        // Check if email is confirmed
         if (!$user['email_confirmed']) {
             return $this->failUnauthorized('Email not confirmed. Please verify your email before logging in.');
         }
-
-    // Check if account is suspended
-    if (isset($user['status']) && $user['status'] === 'suspended') {
-        return $this->fail('This account has been suspended.', 403); // Or another appropriate status code
-    }
-
-    // Check if account is locked
-    if (!empty($user['lock_until']) && new \DateTime() < new \DateTime($user['lock_until'])) {
-        return $this->fail('Account is temporarily locked. Please try again later.', 403); // Or another appropriate status code
-    }
-
-    if (password_verify($password, $user['password'])) {
-        // Reset failed attempts on successful login
-        $this->users->update($user['user_id'], ['failed_login_attempts' => 0, 'lock_until' => null]);
-    } else {
-        // Handle failed login attempt
-        $failedAttempts = $user['failed_login_attempts'] + 1;
-        $lockUntil = null;
-
-        if ($failedAttempts >= 7) {
-            // Lock account for 3 hours
-            $lockUntil = date('Y-m-d H:i:s', strtotime('+3 hours'));
-            $failedAttempts = 0; // Consider whether to reset attempts here
+    
+        // Check if account is suspended
+        if (isset($user['status']) && $user['status'] === 'suspended') {
+            return $this->fail('This account has been suspended.', 403); // Or another appropriate status code
         }
-
-        $this->users->update($user['user_id'], [
-            'failed_login_attempts' => $failedAttempts,
-            'lock_until' => $lockUntil
-        ]);
-
-        return $this->failUnauthorized('Invalid email or password');
+    
+        // Check if account is locked
+        if (!empty($user['lock_until']) && new \DateTime() < new \DateTime($user['lock_until'])) {
+            return $this->fail('Account is temporarily locked. Please try again later.', 403); // Or another appropriate status code
+        }
+    
+        // Check if password is correct
+        if (password_verify($password, $user['password'])) {
+            // Reset failed attempts on successful login
+            $this->users->update($user['user_id'], ['failed_login_attempts' => 0, 'lock_until' => null]);
+        } else {
+            // Handle failed login attempt
+            $failedAttempts = $user['failed_login_attempts'] + 1;
+            $lockUntil = null;
+    
+            if ($failedAttempts >= 7) {
+                // Lock account for 3 hours
+                $lockUntil = date('Y-m-d H:i:s', strtotime('+3 hours'));
+                $failedAttempts = 0; // Consider whether to reset attempts here
+            }
+    
+            $this->users->update($user['user_id'], [
+                'failed_login_attempts' => $failedAttempts,
+                'lock_until' => $lockUntil
+            ]);
+    
+            return $this->failUnauthorized('Invalid email or password');
+        }
+      
+        // JWT generation
+        $key = getenv('JWT_SECRET');
+        $payload = [
+            'iat' => time(),
+            'exp' => time() + 7200,
+            'sub' => $user['user_id'],
+        ];
+    
+        // Check if user is clinic
+        if ($user['role'] === 'clinic') {
+            // Retrieve clinic details and add to payload
+            $clinicDetails = $this->clinic->where('user_id', $user['user_id'])->first();
+            if ($clinicDetails) {
+                $payload['clinic_id'] = $clinicDetails['clinic_id'];
+                $payload['clinic_name'] = $clinicDetails['clinic_name'];
+                // Add other clinic details as needed
+            }
+        }
+    
+        $jwt = JWT::encode($payload, $key, 'HS256');
+    
+        return $this->respond(['token' => $jwt, 'message' => 'Login successful'], 200);
     }
-  
-    // JWT generation
-    $key = getenv('JWT_SECRET');
-    $payload = [
-        'iat' => time(),
-        'exp' => time() + 7200,
-        'sub' => $user['user_id'],
-    ];
-
-    $jwt = JWT::encode($payload, $key, 'HS256');
-
-    return $this->respond(['token' => $jwt, 'message' => 'Login successful'], 200);
-}
+    
 
 
     public function forgotPassword()
