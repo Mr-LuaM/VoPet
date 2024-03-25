@@ -595,7 +595,9 @@ const addClinic = async () => {
       // e.g., await fetchClinics();
       clinicDialog.value = false; // Close the dialog
       // Optionally, reset the form fields
+      await getUsers();
       resetClinicForm();
+
 
       // Assuming snackbar is a method or a reference to a snackbar component to show success messages
       snackbar.value?.openSnackbar('Clinic added successfully', 'success');
