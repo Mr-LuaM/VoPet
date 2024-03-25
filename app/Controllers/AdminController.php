@@ -665,14 +665,15 @@ public function getTransactionsHistory()
                       pets.distinguishing_marks, pets.photo, pets.gender,
                       users.fname, users.lname, users.email, users.contact_number, users.picture_url')
             ->join('pets', 'pets.pet_id = transactions.pet_id', 'left')
-            ->join('users', 'users.user_id = transactions.user_id', 'left')
-            ->whereIn('transactions.status', $statuses)
-            ->orderBy('transactions.created_at', 'DESC'); // Ensure transactions are sorted by creation date in descending order
+            ->join('users', 'users.user_id = transactions.user_id', 'left');
 
         // Filter transactions by clinic ID if available
         if ($clinicId !== null) {
-            $transactionsQuery->where('transactions.clinic_id', $clinicId);
+            $transactionsQuery->where('pets.clinic_id', $clinicId);
         }
+
+        $transactionsQuery->whereIn('transactions.status', $statuses)
+            ->orderBy('transactions.created_at', 'DESC'); // Ensure transactions are sorted by creation date in descending order
 
         // Execute the query
         $transactions = $transactionsQuery->findAll();
@@ -691,6 +692,7 @@ public function getTransactionsHistory()
         ], 500);
     }
 }
+
 
 
 public function markTransactionAsCompleted()
@@ -782,10 +784,13 @@ public function markTransactionAsUnclaimed()
 }
 
 // In AdminController.php or a relevant controller
-public function userLocations() {
+public function userLocations()
+{
     $builder = $this->db->table('users');
-    // Adjust the selection to extract and format the municipality and province
-    $builder->select("CONCAT(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(address, ',', 3), ',', -1), ',', 1), ', ', SUBSTRING_INDEX(SUBSTRING_INDEX(address, ',', 2), ',', -1)) AS location, COUNT(DISTINCT transactions.pet_id) AS pet_count");
+    
+    // Adjust the selection to extract and format the municipality, province, and region
+    $builder->select("CONCAT(SUBSTRING_INDEX(SUBSTRING_INDEX(address, ', ', -3), ', ', 1), ', ', SUBSTRING_INDEX(SUBSTRING_INDEX(address, ', ', -4), ', ', 1)) AS location, COUNT(DISTINCT transactions.pet_id) AS pet_count");
+    
     $builder->join('transactions', 'transactions.user_id = users.user_id', 'left');
     $builder->where('users.address !=', ''); // Ensure the address is not empty
     $builder->groupBy('location'); // Group by the new 'location' format
@@ -797,6 +802,7 @@ public function userLocations() {
     // Return the result set as JSON
     return $this->response->setJSON($results);
 }
+
 public function getVetInfo()
 {
    
