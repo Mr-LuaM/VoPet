@@ -8,7 +8,7 @@ use CodeIgniter\Router\RouteCollection;
  */
 // $routes->get('/', 'Home::index');
 
-$routes->group('auth', function($routes) {
+$routes->group('auth', function ($routes) {
     $routes->post('signup', 'AuthController::signup');
     $routes->post('verify-otp', 'AuthController::verifyOtp');
     $routes->post('resend-otp', 'AuthController::resendOtp');
@@ -21,7 +21,7 @@ $routes->group('auth', function($routes) {
 
     $routes->get('fetchuserdetails', 'AuthController::userDetails');
 });
-$routes->group('user', function($routes) {
+$routes->group('user', function ($routes) {
     $routes->post('changePassword', 'UserController::changePassword');
     $routes->post('changeContact', 'UserController::changeContact');
     $routes->post('changePersonalInformation', 'UserController::changePersonalInformation');
@@ -38,19 +38,15 @@ $routes->group('user', function($routes) {
     $routes->post('sendMessages', 'UserController::sendMessages');
     $routes->post('petture', 'UserController::petture');
     $routes->get('petSavedHistory', 'UserController::petSavedHistory');
-
-
-
-
 });
-$routes->group('admin', function($routes) {
+$routes->group('admin', function ($routes) {
     $routes->get('users', 'AdminController::getUsers');
     $routes->post('addUser', 'AdminController::addUser');
     $routes->post('updateUserRole', 'AdminController::updateUserRole');
     $routes->post('removeUserAccount', 'AdminController::removeUserAccount');
     $routes->post('addNewClinic', 'AdminController::addNewClinic');
 
-  
+
     $routes->get('pets', 'AdminController::getPets');
     $routes->post('addPet', 'AdminController::addPet');
     $routes->post('updatePet', 'AdminController::updatePet');
@@ -77,20 +73,15 @@ $routes->group('admin', function($routes) {
     $routes->post('markPetAsRescued', 'AdminController::markAsRescued');
     $routes->get('PatientPetsMedicalHistory', 'AdminController::getPatientPetsMedicalHistory');
     $routes->post('addMedicalHistoryforExistingpets', 'AdminController::addMedicalHistoryForExistingPets');
-
-
 });
 
-$routes->group('form', function($routes) {
+$routes->group('form', function ($routes) {
     $routes->get('pets', 'FormController::getPets'); // Maps /form/pets to FormController::getPets method
     $routes->get('getClientPets', 'FormController::getClientPets');
     $routes->get('getClientUsers', 'FormController::getClientUsers');
     $routes->get('clinics', 'FormController::clinics');
-
-
-
 });
-$routes->group('api', function($routes) {
+$routes->group('api', function ($routes) {
     $routes->get('monthlyAdoptions', 'ApiController::monthlyAdoptions'); // Maps /form/pets to FormController::getPets method
     $routes->get('monthlyRescues', 'ApiController::monthlyRescues'); // Maps /form/pets to FormController::getPets method
 
@@ -98,3 +89,5 @@ $routes->group('api', function($routes) {
 
 
 $routes->get('test', 'AuthController::test');
+$routes->get('test/send-to-user', 'AdminController::testSendPushNotificationToUser');
+$routes->get('test/send-to-tokens', 'AdminController::testSendPushNotification');
