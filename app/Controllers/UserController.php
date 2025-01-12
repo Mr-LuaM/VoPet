@@ -44,7 +44,7 @@ class UserController extends ResourceController
         $this->medicalHistory = new \App\Models\MedicalHistoryModel();
         $this->messages = new \App\Models\MessagesModel();
         $this->petLocations = new \App\Models\PetLocationsModel();
-        $this->patientpet = new \App\Models\PatientpetModel();
+        $this->patientpet = new \App\Models\PatientPetModel();
         $this->db = \Config\Database::connect();
     }
 
